@@ -1,0 +1,280 @@
+#
+#    dbscript config file - config.yml
+#
+# author: [Brian Hendrickson, brian@dbscript.net]
+# websites: [http://dbscript.net, http://brianhendrickson.com]
+# copyright: (c) 2008 Brian Hendrickson
+#
+--- %YAML:1.1
+
+
+
+# database settings
+
+development:
+  adapter: mysql
+  database: test
+  username: root
+  password: 
+  host: localhost
+
+test:
+  adapter: mysql
+  database: 
+  username: root
+  password: 
+  host: localhost
+
+production:
+  adapter: mysql
+  database: 
+  username: root
+  password: 
+  host: localhost
+
+
+
+
+# environment settings
+
+env:
+  
+  remote_sources:
+    dbscript: dbscript.net/?apps
+  
+  enable_db: development
+  
+  goes: introspection
+  
+  authentication: email
+  
+  plugins:
+    - sessions
+    - validation
+    - security
+    - notify
+    - ping
+    - wp
+    - openid
+    - oauth
+  
+  profile:
+    - postcode
+    - timezone
+    - country
+    - gender
+    - language
+    - fullname
+    - dob
+    - email
+  
+  email_from: root@localhost
+  email_name: Notifier
+  email_server: localhost
+  email_port: 25
+  email_user: 
+  email_pass: 
+  
+  openid_server: https://e-cred.org/server
+  
+  xrds_services:
+    openid2:
+        type: http://specs.openid.net/auth/2.0/server
+        uri: http://endpoint.example.net
+        namespace_id: openid
+        namespace_uri: http://openid.net/xmlns/1.0
+        priority: 10
+        local_id_handler: http://example.com
+  
+  ldap_server: 
+  ldap_context: 
+  ldap_user_field: 
+  
+  ping_server: http://dejafeed.com/?submit
+  
+  blocks:
+    -categories
+  
+  collection_cache:
+    - posts:
+      duration : 0
+      location : cache
+  
+  content_types:
+    - 0:
+      id       : xhtml
+      qs       : "1.000"
+      type     : application/xhtml+xml
+      encoding : null
+      charset  : utf-8
+      language : en
+      size     : 1500
+    - 1:
+      id       : html
+      qs       : "1.000"
+      type     : text/html
+      encoding : null
+      charset  : iso-8859-1
+      language : en
+      size     : 3000
+    - 2:
+      id       : atom
+      qs       : "0.900"
+      type     : application/atom+xml
+      encoding : gzip
+      charset  : utf-8
+      language : en
+      size     : 1500
+    - 3:
+      id       : json
+      qs       : "0.000"
+      type     : application/javascript
+      encoding : gzip
+      charset  : utf-8
+      language : en
+      size     : 1500
+    - 4:
+      id       : wml
+      qs       : "0.900"
+      type     : text/vnd.wap.wml
+      encoding : null
+      charset  : utf-8
+      language : en
+      size     : 1500
+    - 5:
+      id       : ics
+      qs       : "0.000"
+      type     : text/plain
+      encoding : null
+      charset  : iso-8859-1
+      language : en
+      size     : 3000
+    - 6:
+      id       : vcf
+      qs       : "0.000"
+      type     : text/plain
+      encoding : null
+      charset  : iso-8859-1
+      language : en
+      size     : 3000
+    - 7:
+      id       : xml
+      qs       : "0.000"
+      type     : text/xml
+      encoding : null
+      charset  : utf-8w
+      language : en
+      size     : 1500
+    - 8:
+      id       : rdf
+      qs       : "0.000"
+      type     : application/rdf+xml
+      encoding : null
+      charset  : utf-8
+      language : en
+      size     : 1500
+    - 9:
+      id       : sqljson
+      qs       : "0.000"
+      type     : application/sparql-results+json
+      encoding : null
+      charset  : utf-8
+      language : en
+      size     : 1500
+    - 10:
+      id       : sqlxml
+      qs       : "0.000"
+      type     : application/sparql-results+xml
+      encoding : null
+      charset  : utf-8
+      language : en
+      size     : 1500
+    - 11:
+      id       : js
+      qs       : "0.000"
+      type     : application/javascript
+      encoding : gzip
+      charset  : utf-8
+      language : en
+      size     : 1500
+  
+  app_folder: app
+  view_folder: views
+  layout_folder: views
+  show_timer: false
+  debug_enabled: true
+  
+  # the following prefs are not implemented:
+  
+  enable_db_sessions: yes
+  enable_db_versions: yes
+  
+  project_name: 
+  
+  package_name: 
+  package_version:
+  
+  load_paths:
+    model              : models
+    apphome            : apps
+    apppath            : 
+    lib                : 
+    controller         : 
+    config             : 
+    router             : 
+    log                : 
+    public             : 
+    stylesheet         : 
+    javascript         : 
+    image              : 
+  
+  
+  
+  # future config file settings?
+  
+  #routes:
+  #    - :controller/:resource/:id :
+  #        'requirements' : 
+  #            '[a-zA-Z_-]+(.php)'
+  #            '[a-zA-Z_-]+'
+  #            '[0-9]+'
+  
+  #access_list:
+  #    all                : never
+  #    all                : admin
+  #    name,email,pword   : owner
+  
+  #filter_stack:
+  #    model_security     : $req->action
+  #    session_error      : handle_error
+  #    regex_validate     : save_record
+  #    $req->action       : $req->controller
+  #    render_view        : $req->controller
+  
+  #models:
+  #    - db_sessions:
+  #        let_read:
+  #           all           : session_owner
+  #        let_write:
+  #           all           : session_owner
+  #        fields:
+  #           char_field    : id
+  #           int_field     : access_time
+  #           text_field    : data
+  #        primary_key:
+  #           id
+  #    - db_identity:
+  #        let_read:
+  #           email,name    : always
+  #        let_read:
+  #           all           : identity_owner
+  #        let_write:
+  #           all           : identity_owner
+  #        fields:
+  #           auto_field    : id
+  #           char_field    : email
+  #           char_field    : name
+  #           int_field     : access_time
+  
+  
+  

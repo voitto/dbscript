@@ -1,0 +1,12 @@
+<form method="post" action="<?php print $submit_url; ?>">
+
+  <p>Sign In:</p>
+
+  <p>Username:&nbsp;<input name="username" value="<?php if ($username) print $username; elseif (isset($_SESSION['openid_ldap'])) print $_SESSION['openid_ldap']; else print ""; ?>" size="40">  </p>
+    <p>Password:&nbsp;<input name="password" type="password" value="" size="40">  </p>
+
+  <input name="method" value="ldap_submit" type="hidden">
+
+  <input type="submit" value="Sign In">
+
+</form>
