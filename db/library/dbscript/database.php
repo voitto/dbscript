@@ -2,7 +2,7 @@
 
   /** 
    * dbscript -- restful openid framework
-   * @version 0.4.0 -- 1-May-2008
+   * @version 0.5.0 -- 17-July-2008
    * @author Brian Hendrickson <brian@dbscript.net>
    * @link http://dbscript.net/
    * @copyright Copyright 2008 Brian Hendrickson
@@ -31,7 +31,7 @@
    * @package dbscript
    * @author Brian Hendrickson <brian@dbscript.net>
    * @access public
-   * @version 0.4.0 -- 1-May-2008
+   * @version 0.5.0 -- 17-July-2008
    */
 
 class Database {
@@ -387,9 +387,12 @@ class Database {
    */
   function table_exists( $table ) {
     trigger_before( 'table_exists', $this, $this );
-    return isset( $this->data_models[$table] );
+    return isset( $this->models[$table] );
   }
   
+  function set_param( $param, $value ) {
+    $this->$param = $value;
+  }
   
   /**
    * Set Data Array

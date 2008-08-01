@@ -2,7 +2,7 @@
 
   /** 
    * dbscript -- restful openid framework
-   * @version 0.4.0 -- 1-May-2008
+   * @version 0.5.0 -- 17-July-2008
    * @author Brian Hendrickson <brian@dbscript.net>
    * @link http://dbscript.net/
    * @copyright Copyright 2008 Brian Hendrickson
@@ -43,7 +43,7 @@
    * @author Brian Hendrickson <brian@dbscript.net>
    * @access public
    * @return object
-   * @version 0.4.0 -- 1-May-2008
+   * @version 0.5.0 -- 17-July-2008
    * @todo support for clients with cookies-disabled
    */
 

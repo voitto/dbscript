@@ -23,11 +23,11 @@
 if (!class_exists('FUNC')) require_once library_path().'xpertmailer'.DIRECTORY_SEPARATOR . 'FUNC.php';
 
 if (version_compare(phpversion(), '5', '>=')) {
-	if (!class_exists('POP35')) require_once library_path().'xpertmailer'.DIRECTORY_SEPARATOR . 'PHP5' . DIRECTORY_SEPARATOR . 'POP35.php';
-	class POP3 extends POP35 { }
+  if (!class_exists('POP35')) require_once library_path().'xpertmailer'.DIRECTORY_SEPARATOR . 'PHP5' . DIRECTORY_SEPARATOR . 'POP35.php';
+  class POP3 extends POP35 { }
 } else {
-	if (!class_exists('POP34')) require_once library_path().'xpertmailer'.DIRECTORY_SEPARATOR . 'PHP4' . DIRECTORY_SEPARATOR . 'POP34.php';
-	class POP3 extends POP34 { }
+  if (!class_exists('POP34')) require_once library_path().'xpertmailer'.DIRECTORY_SEPARATOR . 'PHP4' . DIRECTORY_SEPARATOR . 'POP34.php';
+  class POP3 extends POP34 { }
 }
 
 ?>

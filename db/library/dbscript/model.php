@@ -2,7 +2,7 @@
 
   /** 
    * dbscript -- restful openid framework
-   * @version 0.4.0 -- 1-May-2008
+   * @version 0.5.0 -- 17-July-2008
    * @author Brian Hendrickson <brian@dbscript.net>
    * @link http://dbscript.net/
    * @copyright Copyright 2008 Brian Hendrickson
@@ -21,7 +21,7 @@
    * Usage:
    * <code>
    *   // define a new table named photos
-   * $model =& $db->model( 'photo' );
+   * $model =& $db->model( 'Photo' );
    *
    *   // define the fields in the table
    * $model->auto_field( 'id' );
@@ -47,7 +47,7 @@
    * @package dbscript
    * @author Brian Hendrickson <brian@dbscript.net>
    * @access public
-   * @version 0.4.0 -- 1-May-2008
+   * @version 0.5.0 -- 17-July-2008
    */
 
 class Model {
@@ -114,6 +114,12 @@ class Model {
   var $custom_class;
   
   /**
+   * default blob field for the model
+   * @var string
+   */
+  var $blob;
+  
+  /**
    * list of public methods
    * @var string[]
    */
@@ -154,6 +160,8 @@ class Model {
    * @var boolean
    */
   var $hidden;
+  
+  var $find_by;
   
   function insert_from_post( &$req ) {
     
@@ -223,7 +231,6 @@ class Model {
               $join =& $db->get_table($Entry->join_table_for('categories', 'entries'));
               $j = $join->base();
               $j->set_value('entry_id',$atomentry->id);
-              
               $c = $Category->find_by('name',$req->$cname);
               if ($c) {
                 $j->set_value('category_id',$c->id);
@@ -278,7 +285,6 @@ class Model {
         
         $aresult = $atomentry->save_changes();
         
-        
       }
       
       $p = $Person->find( get_person_id() );
@@ -288,9 +294,15 @@ class Model {
       
       $recid = $atomentry->attributes['record_id'];
       
+      if (empty($recid))
+        trigger_error('The input form eTag did not match a record_id in entries.', E_USER_ERROR);
+      
     } else {
       
       $recid = $req->id;
+
+      if (empty($recid))
+        trigger_error('The record id was not found in the "id" form field.', E_USER_ERROR);
       
     }
     
@@ -429,8 +441,6 @@ class Model {
     trigger_before('register',$this,$this);
     global $db;
     $this->table = $table;
-    if (!(isset($this->params)))
-      $this->params = array('resource'=>$table);
     if (!(isset($this->access_list)))
       $this->access_list = array();
     if (!(isset($this->relations)))
@@ -611,8 +621,11 @@ class Model {
   }
     
   function set_param( $param, $value ) {
-    trigger_before('set_param',$this,$this);
-    $this->params[$param] = $value;
+    $this->$param = $value;
+  }
+  
+  function set_blob( $value ) {
+    $this->blob = $value;
   }
   
   function is_allowed( $method ) {
@@ -643,6 +656,13 @@ class Model {
   
   function validates_uniqueness_of( $field ) {
     $this->set_attribute( 'unique', $field );
+  }
+  
+  function is_unique_value( $value, $field ) {
+    global $db;
+    $value = $db->escape_string($value);
+    $result = $db->get_result("select $field from ".$this->table." where ".$field." = '$value'");
+    return (!($result && $db->num_rows($result) > 0));
   }
   
   function set_attribute( $attr, $field ) {
@@ -690,6 +710,7 @@ class Model {
 
   
   function set_relation( $relstring, $type ) {
+    //echo $this->table . " " .$relstring."<BR>";
     if (!(isset($this->table)))
       $this->table = tableize( get_class( $this ));
     global $db;
@@ -833,25 +854,23 @@ class Model {
 
   function set_routes($table) {
     trigger_before('set_routes',$this,$this);
-    global $request; 
-  $req =& $request;
-    if (!(isset($req->activeroute)))
-      return;
-    $req->connect(
+    global $request;
+    if (empty($table))
+      trigger_error( 'no table name when creating a route in set_routes', E_USER_ERROR );
+    $request->connect(
       $table,
-      ':resource',
       array(
         'requirements' => array ( '[a-z]+' ),
         'resource' => $table
       )
     );
-    $req->connect(
+    if ($request->resource == $table && $request->id > 1)
+    $request->connect(
       classify($table),
-      ':resource/:id',
       array(
         'requirements' => array ( '[a-z]+', '[0-9]+' ),
         'resource' => $table,
-        'id' => $req->id
+        'id' => $request->id
       )
     );
   }
@@ -923,6 +942,7 @@ class Model {
     
     $db->recordsets[$this->table] = $db->get_recordset($this->get_query($id, $find_by));
     $rs =& $db->recordsets[$this->table];
+
     if (!$rs) return false;
     if ( $id != NULL && $rs->rowcount > 0 )
       if ( $find_by != NULL )
@@ -933,7 +953,7 @@ class Model {
     return false;
   }
   
-  function find_by( $col, $val ) {
+  function find_by( $col, $val = 1 ) {
     trigger_before('find_by',$this,$this);
     return $this->find( $val, $col );
   }

@@ -2,7 +2,7 @@
 
   /** 
    * dbscript -- restful openid framework
-   * @version 0.4.0 -- 1-May-2008
+   * @version 0.5.0 -- 17-July-2008
    * @author Brian Hendrickson <brian@dbscript.net>
    * @link http://dbscript.net/
    * @copyright Copyright 2008 Brian Hendrickson
@@ -26,7 +26,7 @@
    * @package dbscript
    * @author Brian Hendrickson <brian@dbscript.net>
    * @access public
-   * @version 0.4.0 -- 1-May-2008
+   * @version 0.5.0 -- 17-July-2008
    * @todo support array datatypes
    */
 
@@ -288,7 +288,7 @@ class PostgreSQL extends Database {
     return "'" . $this->escape_string($rec->attributes[$modified_field]) . "'";
   }
   function pre_insert( &$rec, $modified_field, $datatype ) {
-    trigger_before( 'pre_insert', $this, $this );
+    trigger_before( 'pre_insert', $rec, $this );
     if (isset($this->models[$rec->table]->field_attrs[$modified_field]['required'])) {
       if (!(strlen( $rec->attributes[$modified_field] ) > 0))
         trigger_error( "$modified_field is a required field", E_USER_ERROR );
@@ -296,7 +296,7 @@ class PostgreSQL extends Database {
     if (isset($this->models[$rec->table]->field_attrs[$modified_field]['unique'])) {
       $result = $this->get_result("select ".$modified_field." from ".$rec->table." where ".$modified_field." = '".$rec->attributes[$modified_field]."'");
       if ($result && $this->num_rows($result) > 0)
-        trigger_error( "$modified_field must be unique!", E_USER_ERROR );
+        trigger_error( "Sorry, that $modified_field has already been taken.", E_USER_ERROR );
     }
     if ($datatype == 'time' && !(strlen($rec->attributes[$modified_field]) > 0))
       $rec->attributes[$modified_field] = date("Y-m-d H:i:s",strtotime("now"));
@@ -317,15 +317,15 @@ class PostgreSQL extends Database {
     }
   }
   function pre_update( &$rec, $modified_field, $datatype ) {
-    trigger_before( 'pre_update', $this, $this );
+    trigger_before( 'pre_update', $rec, $this );
     if (isset($this->models[$rec->table]->field_attrs[$modified_field]['required'])) {
       if (!(strlen( $rec->attributes[$modified_field] ) > 0))
-        trigger_error( "$modified_field is a required field", E_USER_ERROR );
+        trigger_error( "Sorry, you must provide a value for $modified_field", E_USER_ERROR );
     }
     if (isset($this->models[$rec->table]->field_attrs[$modified_field]['unique'])) {
       $result = $this->get_result("select ".$modified_field." from ".$rec->table." where ".$modified_field." = '".$rec->attributes[$modified_field]."' and ".$rec->primary_key." != '".$rec->attributes[$rec->primary_key]."'");
       if ($this->num_rows($result) > 0)
-        trigger_error( "$modified_field must be unique!", E_USER_ERROR );
+        trigger_error( "Sorry, that $modified_field has already been taken.", E_USER_ERROR );
     }
     if ($datatype == 'blob' && (strlen( $rec->attributes[$modified_field] ) > 0 )) {
       $oid_result = $this->get_result("select ".$modified_field." from ".$rec->table." where ".$rec->primary_key." = '".$rec->attributes[$rec->primary_key]."'");
@@ -534,20 +534,20 @@ class PostgreSQL extends Database {
   function create_openid_tables() {
     if (in_array('openid_identities',$this->tables))
       return;
-		$result = $this->get_result("CREATE TABLE openid_identities ( uurl_id int NOT NULL, user_id int NOT NULL default '0', url text, hash char(32) )");
+    $result = $this->get_result("CREATE TABLE openid_identities ( uurl_id int NOT NULL, user_id int NOT NULL default '0', url text, hash char(32) )");
 
-		$result = $this->get_result("CREATE TABLE oauth_consumers (consumer_key CHAR(255) PRIMARY KEY, secret CHAR(40), description CHAR(40))");
+    $result = $this->get_result("CREATE TABLE oauth_consumers (consumer_key CHAR(255) PRIMARY KEY, secret CHAR(40), description CHAR(40))");
 
-		$result = $this->get_result("CREATE TABLE oauth_tokens (consumer_key CHAR(40), token CHAR(40), secret CHAR(40), token_type CHAR(7), nonce CHAR(40), user_id INT DEFAULT 0, expires INT DEFAULT 0)");
+    $result = $this->get_result("CREATE TABLE oauth_tokens (consumer_key CHAR(40), token CHAR(40), secret CHAR(40), token_type CHAR(7), nonce CHAR(40), user_id INT DEFAULT 0, expires INT DEFAULT 0)");
 
-		$result = $this->get_result("INSERT INTO oauth_consumers (consumer_key, secret, description) VALUES ('DUMMYKEY', '', 'Unidentified Consumer')");
+    $result = $this->get_result("INSERT INTO oauth_consumers (consumer_key, secret, description) VALUES ('DUMMYKEY', '', 'Unidentified Consumer')");
 //;
 $result = $this->get_result("CREATE TABLE openid_nonces ( server_url VARCHAR(2047), timestamp INT, salt CHAR(40) )");
 //;
 $result = $this->get_result("CREATE TABLE openid_associations ( server_url VARCHAR(2047), handle VARCHAR(255), secret CHAR(40), issued INTEGER, lifetime INTEGER, assoc_type VARCHAR(64) )");
 
 
-	}
+  }
 
   function auto_field( $field, &$model ) {
     $model->set_field( $field, "serial primary key" );
@@ -593,10 +593,17 @@ $result = $this->get_result("CREATE TABLE openid_associations ( server_url VARCH
   }
 
   function get_query( $id=NULL, $find_by=NULL, &$model ) {
+    if (isset($model->query)) {
+      $q = $model->query;
+      unset($model->query);
+      return $q;
+    }
+    $model->set_param('id',$id);
+    $model->set_param('find_by',$find_by);
     trigger_before( 'get_query', $model, $this );
     $pkfield = $model->primary_key;
-    if ($find_by == NULL)
-      $find_by = $model->primary_key;
+    if ($model->find_by == NULL)
+      $model->set_param('find_by', $model->primary_key);
     $relfields = array();
     $relfields = $model->relations;
     $table = $model->table;
@@ -648,23 +655,33 @@ $result = $this->get_result("CREATE TABLE openid_associations ( server_url VARCH
     if (!(strlen($leftsql) > 1))
       $sql .= $table;
   
-    if (is_array($find_by)) {
+    if (is_array($model->find_by)) {
+
       $findfirst = true;
-      foreach( $find_by as $col=>$val ) {
-        $op = "AND";
-        if ($col == 'op') {
+      $op = "AND";
+      foreach( $model->find_by as $col=>$val ) {
+        if (is_array($val))
+            list($col,$val) = each($val);
+                if ($col == 'op') {
           $op = $val;
         } else {
+          
+          if (!(!(strpos($col,".") === false)))
+            $field = "$table.$col";
+          else
+            $field = $col;
+          
           if ($findfirst) {
-            $sql .= " WHERE $table.$col = '$val' ";
+            $sql .= " WHERE $field = '$val' ";
           } else {
-            $sql .= " $op $table.$col = '$val' ";
+            $sql .= " $op $field = '$val' ";
           }
           $findfirst = false;
+          
         }
       }
-    } elseif ($id != NULL) {
-      $sql .= " WHERE $table.$find_by = '$id' ";
+    } elseif ($model->id != NULL) {
+      $sql .= " WHERE $table.".$model->find_by." = '".$model->id."' ";
     }
 
     if (!(isset($model->orderby)))

@@ -21,11 +21,11 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 if (version_compare(phpversion(), '5', '>=')) {
-	if (!class_exists('FUNC5')) require_once library_path().'xpertmailer'.DIRECTORY_SEPARATOR . 'PHP5' . DIRECTORY_SEPARATOR . 'FUNC5.php';
-	class FUNC extends FUNC5 { }
+  if (!class_exists('FUNC5')) require_once library_path().'xpertmailer'.DIRECTORY_SEPARATOR . 'PHP5' . DIRECTORY_SEPARATOR . 'FUNC5.php';
+  class FUNC extends FUNC5 { }
 } else {
-	if (!class_exists('FUNC4')) require_once library_path().'xpertmailer'.DIRECTORY_SEPARATOR . 'PHP4' . DIRECTORY_SEPARATOR . 'FUNC4.php';
-	class FUNC extends FUNC4 { }
+  if (!class_exists('FUNC4')) require_once library_path().'xpertmailer'.DIRECTORY_SEPARATOR . 'PHP4' . DIRECTORY_SEPARATOR . 'FUNC4.php';
+  class FUNC extends FUNC4 { }
 }
 
 ?>

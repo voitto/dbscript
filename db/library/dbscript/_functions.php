@@ -2,7 +2,7 @@
 
   /** 
    * dbscript -- restful openid framework
-   * @version 0.4.0 -- 1-May-2008
+   * @version 0.5.0 -- 17-July-2008
    * @author Brian Hendrickson <brian@dbscript.net>
    * @link http://dbscript.net/
    * @copyright Copyright 2008 Brian Hendrickson
@@ -120,7 +120,8 @@ function dbscript_error( $errno, $errstr, $errfile, $errline ) {
     return;
   switch ($errno) {
     case E_USER_ERROR:
-      $req =& request_object();
+      global $request;
+      $req =& $request;
       if (isset($_GET['dbscript_xml_error_continue'])) {
         $xml = "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\n";
         $xml .= "<root>\n";
@@ -133,9 +134,9 @@ function dbscript_error( $errno, $errstr, $errfile, $errline ) {
         print "  Fatal error in line $errline of file $errfile<br>\n";
         print "Aborting...<br>\n";
       } else {
-        print "<b>ERROR</b> [$errno] $errstr<br>\n";
-        print "  Fatal error in line $errline of file $errfile<br>\n";
-        print "Aborting...<br>\n";
+        print "<br /><br />$errstr<br /><br />\n";
+        if (environment('debug_enabled'))
+          print "  Fatal error in line $errline of file $errfile<br>\n";
       }
       exit(1);
     case E_USER_WARNING:
@@ -532,8 +533,8 @@ function read_cache_blob( &$request, $value ) {
 
 function render_blob( $value ) {
   
-  $req =& request_object();
-  
+  global $request;
+  $req =& $request;
   global $db;
   
   read_cache_blob($req,$value);
@@ -545,8 +546,8 @@ function render_blob( $value ) {
 
 function fetch_blob( $value, $return ) {
   
-  $req =& request_object();
-  
+  global $request;
+  $req =& $request;
   global $db;
   
   if (is_array( $value )) {
@@ -702,10 +703,14 @@ function extension_for( $type ) {
 function is_blob( $field ) {
   
   $spleet = split( "\.", $field );
+  
   global $db;
+  
+  if (empty($spleet[0])) return false;
+  
   $model =& $db->get_table($spleet[0]);
   
-  if ($model)
+  if ($model && !empty($spleet[1]))
     if ($model->is_blob($spleet[1]))
       return true;
   
@@ -789,11 +794,11 @@ function render( $param, $value ) {
   global $db;
   $response =& response_object();
   $request =& request_object();
-  
+
   if ( $param == 'action' && !(strpos($value,".") === false ) ) {
     $spleet = split( "\.", $value );
     $value = $spleet[0];
-    $request->set_param( 'client_wants', $spleet[1] );
+    $request->set( 'client_wants', $spleet[1] );
   }
   
   $request->set_param( $param, $value );
@@ -913,13 +918,14 @@ function send_email( $sendto, $subject, $content, $fromemail="", $fromname="", $
 }
 
 
+function is_upload($table,$field) {
+  return (isset($_FILES[strtolower(classify($table))]['name'][$field])
+   && !empty($_FILES[strtolower(classify($table))]['name'][$field]));
+}
+
+
 function is_email($email) {
-  $email_parts = explode("@", $email);
-  if ( count($email_parts) != 2 ) {
-    return false;
-  } else {
-    return true;
-  }
+  return preg_match('/^([a-z0-9])(([-a-z0-9._])*([a-z0-9]))*\@([a-z0-9])([-a-z0-9_])+([a-z0-9])*(\.([a-z0-9])([-a-z0-9_-])([a-z0-9])+)*$/i',$email);
 }
 
 
@@ -941,10 +947,41 @@ function render_partial( $template ) {
   if (!(strpos($template,".") === false)) {
     $spleet = split("\.",$template);
     $template = $spleet[0];
-    $request->set_param( 'client_wants', $spleet[1] );
+    $request->set( 'client_wants', $spleet[1] );
   }
   
   $response->render_partial( $request, $template );
+  
+}
+
+
+function render_theme( $theme ) {
+  
+  global $request;
+  
+  $folder = $GLOBALS['PATH']['themes'] . $theme . DIRECTORY_SEPARATOR;
+  
+  add_include_path($folder);
+  
+  if (isset($request->action) && !($request->action == 'index')) {
+    get_header();
+    show_prologue_nav();
+    echo '<div id="main">'."\n";
+    content_for_layout();
+    echo '</div>'."\n";
+    get_footer();
+    exit;
+  }
+  
+  if ( file_exists( $folder . "index.php" ))
+    require_once( $folder . "index.php" );
+  else
+    require_once( $folder . "index.html" );
+}
+
+function theme_path() {
+  
+  return $GLOBALS['PATH']['themes'] . environment('theme') . DIRECTORY_SEPARATOR;
   
 }
 
@@ -992,6 +1029,61 @@ function register_type( $arr ) {
   global $variants;
   $variants[] = $arr;
 }
+
+function photoCreateCropThumb ($p_thumb_file, $p_photo_file, $p_max_size, $p_quality = 100) {
+  
+  $pic = imagecreatefromjpeg($p_photo_file);
+  
+  if ($pic) {
+    $thumb = imagecreatetruecolor ($p_max_size, $p_max_size);
+    if (!$thumb)
+      trigger_error('Sorry, the thumbnail photo could not be created', E_USER_ERROR);
+    $width = imagesx($pic);
+    $height = imagesy($pic);
+    if ($width < $height) {
+      $twidth = $p_max_size;
+      $theight = $twidth * $height / $width; 
+      imagecopyresized($thumb, $pic, 0, 0, 0, ($height/2)-($width/2), $twidth, $theight, $width, $height); 
+    } else {
+      $theight = $p_max_size;
+      $twidth = $theight * $width / $height; 
+      imagecopyresized($thumb, $pic, 0, 0, ($width/2)-($height/2), 0, $twidth, $theight, $width, $height); 
+    }
+    
+    imagejpeg($thumb, $p_thumb_file, $p_quality);
+  }
+  
+}
+
+
+function resize_jpeg($file,$dest,$size) {
+  $new_w = $size;
+  $new_h = $new_w;
+  $src_img = imagecreatefromjpeg("$file");
+  $old_x=imageSX($src_img);
+	$old_y=imageSY($src_img);
+	if ($old_x > $old_y) 
+	{
+		$thumb_w=$new_w;
+		$thumb_h=$old_y*($new_h/$old_x);
+	}
+	if ($old_x < $old_y) 
+	{
+		$thumb_w=$old_x*($new_w/$old_y);
+		$thumb_h=$new_h;
+	}
+	if ($old_x == $old_y) 
+	{
+		$thumb_w=$new_w;
+		$thumb_h=$new_h;
+	}
+	$dst_img=ImageCreateTrueColor($thumb_w,$thumb_h);
+	imagecopyresampled($dst_img,$src_img,0,0,0,0,$thumb_w,$thumb_h,$old_x,$old_y); 
+	imagejpeg($dst_img,$dest);
+}
+	
+
+            
 
 
 function content_types() {
@@ -1222,7 +1314,7 @@ function header_status( $status ) {
   /**
    * set_cookie
    * 
-   * bake a fresh Cookie
+   * make a fresh Cookie
    * 
    * @access public
    * @param integer $userid
@@ -1300,12 +1392,30 @@ function signed_in() {
 function public_resource() {
   
   global $db;
-  $req =& request_object();
+  global $request;
+  $req =& $request;
+  
+  if ( $req->resource == 'introspection' )
+    return true;  
   
   $datamodel =& $db->get_table($req->resource);
   
-  if (in_array('everyone',$datamodel->access_list['read']['id']))
+  if (!(isset($datamodel->access_list['read']['id'])))
+    return false;
+  
+  if (in_array('always',$datamodel->access_list['read']['id']))
     return true;
+    
+  if (isset($req->client_wants))
+    if (in_array($req->action.".".$req->client_wants,$datamodel->access_list['read']['id']))
+      return true;
+    else
+      return false;
+
+  if (in_array($req->action,$datamodel->access_list['read']['id']))
+    return true;
+
+//      if ((!(file_exists($this->template_path . $resource . "_" . $action . "." . $ext)))
   
   return false;
   
@@ -1325,6 +1435,15 @@ function can_read( $resource ) {
   return false;
 }
 
+function can_edit( $post ) {
+  global $db;
+  $p = get_profile();
+  $e = $post->FirstChild('entries');
+  $m =& $db->get_table($post->table);
+  return (($p->id == $e->person_id) || $m->can_superuser($post->table));
+}
+
+
   /**
    * get_profile
    * 
@@ -1343,8 +1462,14 @@ function get_profile($id=NULL) {
   
   $view =& response_object();
   
+  if (!($id == NULL))
+    return $Identity->find($id);
+  
   if (isset($view->named_vars['profile']))
     return $view->named_vars['profile'];
+  
+  if ($id == NULL)
+    $id = get_person_id();
   
   $p = $Person->find($id);
   
@@ -1353,6 +1478,25 @@ function get_profile($id=NULL) {
     if ($i)
       return $i;
   }
+  
+  return false;
+}
+
+function get_profile_id() {
+  
+  global $db;
+  
+  $Identity =& $db->get_table( 'identities' );
+  
+  $view =& response_object();
+  
+  if (isset($view->named_vars['profile']))
+    $i =& $view->named_vars['profile'];
+  else
+    $i = $Identity->find( get_person_id() );
+  
+  if ($i)
+    return $i->id;
   
   return false;
 }
@@ -1377,10 +1521,10 @@ function get_person_id() {
       return $i->person_id;
   }
   
-  $i = get_cookie_id();
+  $p = get_cookie_id();
   
-  if ($i)
-    return $i;
+  if ($p)
+    return $p;
   
   return 0;
   
@@ -1751,7 +1895,8 @@ function is_obj( &$object, $check=null, $strict=true ) {
 function resource_group_members( $gid=NULL ) {
   
   global $db;
-  $req =& request_object();
+  global $request;
+  $req =& $request;
   $Person =& $db->model('Person');
   $Group =& $db->model('Group');
   $Group->find();
@@ -1789,6 +1934,36 @@ function resource_group_members( $gid=NULL ) {
   
   return $result;
   
+}
+
+
+function laconica_time($dt) {
+  
+  $t = strtotime($dt);
+	$now = time();
+	$diff = $now - $t;
+
+	if ($diff < 60) {
+		return _t('a few seconds ago');
+	} else if ($diff < 92) {
+		return _t('about a minute ago');
+	} else if ($diff < 3300) {
+		return _t('about ') . round($diff/60) . _t(' minutes ago');
+	} else if ($diff < 5400) {
+		return _t('about an hour ago');
+	} else if ($diff < 22 * 3600) {
+		return _t('about ') . round($diff/3600) . _t(' hours ago');
+	} else if ($diff < 37 * 3600) {
+		return _t('about a day ago');
+	} else if ($diff < 24 * 24 * 3600) {
+		return _t('about ') . round($diff/(24*3600)) . _t(' days ago');
+	} else if ($diff < 46 * 24 * 3600) {
+		return _t('about a month ago');
+	} else if ($diff < 330 * 24 * 3600) {
+		return _t('about ') . round($diff/(30*24*3600)) . _t(' months ago');
+	} else if ($diff < 480 * 24 * 3600) {
+		return _t('about a year ago');
+	}
 }
 
 function time_3339($str) {
@@ -1869,5 +2044,9 @@ function getLocaltime($GMT,$dst){
 }
 
 
+function normalize_username($username) {
+  $username = preg_replace('|[^https?://]?[^\/]+/(xri.net/([^@]!?)?)?/?|', '', $username);
+  return trim($username);
+}
 
 ?>

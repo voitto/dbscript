@@ -23,11 +23,11 @@
 if (!class_exists('SMTP')) require_once library_path().'xpertmailer'.DIRECTORY_SEPARATOR . 'SMTP.php';
 
 if (version_compare(phpversion(), '5', '>=')) {
-	if (!class_exists('MAIL5')) require_once library_path().'xpertmailer'.DIRECTORY_SEPARATOR . 'PHP5' . DIRECTORY_SEPARATOR . 'MAIL5.php';
-	class MAIL extends MAIL5 { }
+  if (!class_exists('MAIL5')) require_once library_path().'xpertmailer'.DIRECTORY_SEPARATOR . 'PHP5' . DIRECTORY_SEPARATOR . 'MAIL5.php';
+  class MAIL extends MAIL5 { }
 } else {
-	if (!class_exists('MAIL4')) require_once library_path().'xpertmailer'.DIRECTORY_SEPARATOR . 'PHP4' . DIRECTORY_SEPARATOR . 'MAIL4.php';
-	class MAIL extends MAIL4 { }
+  if (!class_exists('MAIL4')) require_once library_path().'xpertmailer'.DIRECTORY_SEPARATOR . 'PHP4' . DIRECTORY_SEPARATOR . 'MAIL4.php';
+  class MAIL extends MAIL4 { }
 }
 
 ?>

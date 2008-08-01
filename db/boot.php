@@ -2,7 +2,7 @@
    
   /** 
    * dbscript -- restful openid framework
-   * @version 0.4.0 -- 1-May-2008
+   * @version 0.5.0 -- 17-July-2008
    * @author Brian Hendrickson <brian@dbscript.net>
    * @link http://dbscript.net/
    * @copyright Copyright 2008 Brian Hendrickson
@@ -43,19 +43,19 @@
    Version 0.3.0, 10-Jun-2007
      models for Group, Membership, Identity
    
-   Version 0.4.0, 1-May-2008
+   Version 0.5.0, 17-July-2008
      new templates: vcard, hcard, ics, rdf, json, atom
    
    */
    
-$version = '0.4.0';
+$version = '0.5.0';
 
   /**
    * directory paths
    */
 
 global $views,$app,$config,$env,$exec_time,$version,$response;
-global $variants,$request,$loader,$db;
+global $variants,$request,$loader,$db,$logic;
 
 
 
@@ -89,7 +89,7 @@ foreach( array(
     'view',
     'cookie'
   ) as $module ) {
-  
+
   include $GLOBALS['PATH']['dbscript'] . $module . '.php';
   
 }
@@ -98,8 +98,8 @@ foreach( array(
 include $GLOBALS['PATH']['library'] . 'http_negotiate.php';
 
 
-//error_reporting( E_USER_ERROR | E_USER_WARNING | E_USER_NOTICE );
-//$dbscript_error_handler = set_error_handler( 'dbscript_error' );
+error_reporting( E_ALL & ~E_NOTICE & ~E_WARNING );
+$dbscript_error_handler = set_error_handler( 'dbscript_error' );
 
 
   /**
@@ -136,7 +136,7 @@ $request = new Mapper();
 $request->connect(
   
   // route pattern
-  'static/:resource',
+  'static/:staticresource',
   
   array(
     'requirements' => array ( '[A-Za-z0-9_.]+' )
@@ -169,6 +169,7 @@ extract( $$env['enable_db'] );
   // if app folder exists, re-config
 if (is_dir( $env['app_folder'] )) {
   $app = $env['app_folder'] . DIRECTORY_SEPARATOR;
+  $GLOBALS['PATH']['app'] = $app;
   $GLOBALS['PATH']['controllers'] = $app . 'controllers' . DIRECTORY_SEPARATOR;
   $GLOBALS['PATH']['models'] = $app . 'models' . DIRECTORY_SEPARATOR;
   if ( file_exists( $app . 'config.yml' ) ) {
@@ -197,6 +198,8 @@ if ( is_dir( $app . $env['layout_folder'] ) )
   $request->set_layout_path( $app . $env['layout_folder'].DIRECTORY_SEPARATOR );
 else
   $request->set_layout_path( $env['layout_folder'].DIRECTORY_SEPARATOR );
+
+$GLOBALS['PATH']['themes'] = $request->template_path . 'wp-themes' . DIRECTORY_SEPARATOR;
 
   /**
    * connect to the database with settings from config.yml
@@ -236,37 +239,12 @@ if ( $db->just_get_objects() )
   /**
    * load plugins
    */
-$db->create_openid_tables();
 
 if ( isset( $env ))
   while ( list( $key, $plugin ) = each( $env['plugins'] ) )
     load_plugin( $plugin );
 
 
-wp_plugin_include(array('openid','oauth'));
-
-
-$logic = new WordPressOpenID_Logic(null);
-
-$logic->activate_plugin();
-
-//generate('http://willnorris.com');
-//generate('https://will.norris.name/');
-//generate('http://xri.net/=will.norris');
-//generate('xri://=will.norris');
-//generate('xri://=!C714.538.BD92.E2C6');
-//generate('http://xri.net/@will.norris');
-//generate('http://claimid.com/willnorris');
-
-//function generate($username) {
-//	global $logic; 
-
-//	echo "$username =>\t\t" . $logic->normalize_username($username) . "\n";
-//}
-
-//function sanitize_user($user) { 
-//	return $user; 
-//}
   /**
    * connect more Routes to the Mapper
    */
@@ -293,20 +271,6 @@ $request->connect(
 );
 
 $request->connect(
-  ':resource/:id/:action/partial',
-  array(
-    'requirements' => array ( '[A-Za-z0-9_.]+', '[0-9]+', '[A-Za-z0-9_.]+' )
-  )
-);
-
-$request->connect(
-  ':resource/:action/partial',
-  array(
-    'requirements' => array ( '[A-Za-z0-9_.]+', '[A-Za-z0-9_.]+' )
-  )
-);
-
-$request->connect(
   ':resource/:id/:action',
   array(
     'requirements' => array ( '[A-Za-z0-9_.]+', '[0-9]+', '[A-Za-z0-9_.]+' )
@@ -328,6 +292,20 @@ $request->connect(
 );
 
 $request->connect(
+  ':resource/:id/:action/partial',
+  array(
+    'requirements' => array ( '[A-Za-z0-9_.]+', '[0-9]+', '[A-Za-z0-9_.]+' )
+  )
+);
+
+$request->connect(
+  ':resource/:action/partial',
+  array(
+    'requirements' => array ( '[A-Za-z0-9_.]+', '[A-Za-z0-9_.]+' )
+  )
+);
+
+$request->connect(
   ':resource',
   array(
     'requirements' => array ( '[A-Za-z0-9_.]+' )
@@ -336,14 +314,18 @@ $request->connect(
 
 $request->connect( '', array( 'resource'=>$env['goes'], 'action'=>'get' ) );
 
+
+
   // (for debugging) print the current request variables and die
 #aspect_join_functions( 'routematch', 'catch_params' );
 
 $request->routematch();
 
+//print_r($request->activeroute); exit;
+
 
 /**
- * attach plugin functions to aspect crosscuts
+ * attach functions to aspect crosscuts
  */
 
   // load data model if these model methods are triggered
@@ -364,10 +346,6 @@ before_filter( 'regex_validate', 'save_record' );
 
   // read the Access List and verify action permissions
 before_filter( 'model_security', $request->action );
-
-  // send an e-mail when content is posted
-after_filter( 'send_notification', 'insert_from_post' );
-after_filter( 'send_notification', 'update_from_post' );
 
   // if public resource, ping the search index server
 after_filter( 'send_ping', 'insert_from_post' );

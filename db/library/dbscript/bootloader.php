@@ -2,7 +2,7 @@
 
   /** 
    * dbscript -- restful openid framework
-   * @version 0.4.0 -- 1-May-2008
+   * @version 0.5.0 -- 17-July-2008
    * @author Brian Hendrickson <brian@dbscript.net>
    * @link http://dbscript.net/
    * @copyright Copyright 2008 Brian Hendrickson
@@ -27,7 +27,7 @@
    * @package dbscript
    * @author Brian Hendrickson <brian@dbscript.net>
    * @access public
-   * @version 0.4.0 -- 1-May-2008
+   * @version 0.5.0 -- 17-July-2008
    */
 
 class BootLoader {
@@ -190,13 +190,12 @@ class LoadClasses extends BootLoader {
       $app = 'db';
     
 
-    foreach ($paths as $name => $path) {
+    foreach ($paths as $name => $loadpath) {
       //next unless path.last && name != :application
       //Dir[path.first / path.last].each do |file|
       //load_file file
-      $path = $GLOBALS['PATH']['app'].$path;
-      if (!(substr($path,-3) == 'db/') && is_dir($path)) {
-        if ($handle = opendir($path)) {
+      $path = $GLOBALS['PATH']['app'].$loadpath;
+        if (!empty($loadpath) && $handle = opendir($path)) {
           while (false !== ($file = readdir($handle))) {
             if ($file != '.' && $file != '..' && substr($file,-3) == 'php') {
               require_once $path.DIRECTORY_SEPARATOR.$file;
@@ -207,7 +206,6 @@ class LoadClasses extends BootLoader {
           }
           closedir($handle);
         }
-      }
     }
 
 

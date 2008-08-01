@@ -2,7 +2,7 @@
 
   /** 
    * dbscript -- restful openid framework
-   * @version 0.4.0 -- 1-May-2008
+   * @version 0.5.0 -- 17-July-2008
    * @author Brian Hendrickson <brian@dbscript.net>
    * @link http://dbscript.net/
    * @copyright Copyright 2008 Brian Hendrickson
@@ -177,14 +177,23 @@ class Mapper {
       $this->path = substr($this->uri, $lenbase);
     else
       $this->path = substr($this->uri, $lenbase, $end);
-    
+
+    if (!(strpos($this->params[(count($this->params)-1)],".") === false)) {
+      $actionsplit = split("\.", $this->params[(count($this->params)-1)]);
+      $this->client_wants = $actionsplit[1];
+    }
+      
     session_set_cookie_params( 60*60*24*$this->cookiedays, $this->path );
     
     if (!(substr($this->path, -1) == "/"))
       $this->path .= "/";
     
-     $this->domain = $this->values[2];
-    
+    $this->domain = $this->values[2];
+
+    if ($qp > $lenbase)
+      $this->params = explode( '/', substr($this->uri,$qp+1));
+    else
+      $this->params = array('');
 
     $this->routes = array();
     $this->persisted_vars = array();
@@ -203,8 +212,14 @@ class Mapper {
     trigger_before( 'handle_error', $this, $errstr );
   }
   
+  function route_exists( $routename ) {
+    foreach ( $this->routes as $r ) 
+      if ( $routename == $r->name )
+        return true;
+    return false;
+  }
+  
   function url_for( $params, $altparams = NULL ) {
-    
     $match = false;
     $route_match = NULL;
     
@@ -218,7 +233,7 @@ class Mapper {
       $routename = $params;
       $params = $altparams;
     }
-    
+
     foreach ( $this->routes as $r ) {
       
       $vars = array();
@@ -228,7 +243,7 @@ class Mapper {
           $vars[substr( $str, 1 )] = $pos;
         }
       }
-      
+
       if ( isset( $routename ) ) {
         if ( $routename == $r->name ) {
           // a named route was found
@@ -236,16 +251,17 @@ class Mapper {
             $params = $r->defaults;
           return $r->build_url( $params, $this->base );
         }
-      } elseif ( count( array_intersect( array_keys($vars), array_keys($params) ) ) == count( $vars ) && count($vars) == count($params) && count($r->patterns) == count($params) ) {
+//      } elseif ( is_array($params) && count( array_intersect( array_keys($vars), array_keys($params) ) ) == count( $vars ) && count($vars) == count($params) && count($r->patterns) == count($params) ) {
+      } elseif ( is_array($params) && count( array_intersect( array_keys($vars), array_keys($params) ) ) == count( $vars ) && count($vars) == count($params)  ) {
         // every pattern in the route exists in the requested params
-        
+
         return $r->build_url( $params, $this->base );
       } else {
         // eh
       }
       
     }
-    
+
     foreach ( $this->params as $paramkey=>$paramval ) {
       
       if ( is_integer( $paramkey ) )
@@ -264,6 +280,7 @@ class Mapper {
         }
         
         if ( count( array_intersect( array_keys($vars), array_keys($params) ) ) == count( $vars ) && count($vars) == count($params) ) {
+
           return $r->build_url( $params, $this->base );
         }
       
@@ -323,8 +340,12 @@ class Mapper {
   }
   
   function set_param( $param, $value ) {
-    $this->params[$param] = $value;
-    $this->$param =& $this->params[$param];
+    if (is_array($param)) {
+      $this->params[$param[0]][$param[1]] = $value;
+    } else {
+      $this->params[$param] = $value;
+      $this->$param =& $this->params[$param];
+    }
   }
   
   function set_layout_path( $path ) {
@@ -390,17 +411,25 @@ class Mapper {
     if ($template == 'get')
       $template = 'index';
     
-    if (isset($this->params['client_wants']))
-      $ext = $this->params['client_wants'];
+    if (isset($this->client_wants))
+      $ext = $this->client_wants;
     
+    // example: blah.net/?posts/new.html
+    
+    // searching for a layout to go with the partial _new
+    
+    // /posts/new.html
     $view = $this->template_path . $resource . $template . "." . $ext;
     
+    // /new.html
     if (!(is_file($view)))
       $view = $this->template_path . $template . "." . $ext;
     
+    // /posts/index.html
     if (!$partial && !(is_file($view)))
       $view = $this->template_path . $resource . 'index' . "." . $ext;
     
+    // /index.html
     if (!$partial && !(is_file($view)))
       $view = $this->template_path . 'index' . "." . $ext;
     
@@ -410,17 +439,21 @@ class Mapper {
         $action = 'index';
       else
         $action = $this->action;
-        
+      
+      // found a potential layout but is there a partial with the same extension?
+      
+      // /posts/_new.ext  ??
       if ((!(file_exists($this->template_path . $resource . "_" . $action . "." . $ext)))
+        // /_new.ext    ??
         && (!(file_exists($this->template_path . "_" . $action . "." . $ext))))
           return false;
       
     }
     
-    if (is_file($view))
+    if  (is_file($view))
       return $view;
-    else
-      return false;
+    
+    return false;
     
   }
   
@@ -477,8 +510,16 @@ class Mapper {
     // Generate a route from a set of keywords and return the url
   }
   
+  function set( $param, $val ) {
+    $this->$param = $val;
+  }
+  
   function routematch( $url = NULL ) {
     // Match a URL against against one of the routes contained.
+    
+    if ($this->activeroute)
+      return;
+    
     $return = false;
     trigger_before( 'routematch', $this, $this->activeroute );
     
@@ -499,15 +540,14 @@ class Mapper {
       if (!(strpos($this->action,".") === false)) { // check for period
         $actionsplit = split("\.", $this->action);
         $this->set_param( 'action', $actionsplit[0]);
-        $this->set_param( 'client_wants', $actionsplit[1] );
+        $this->set( 'client_wants', $actionsplit[1] );
       }
     }
-
     if (isset($this->resource)) {
       if (!(strpos($this->resource,".") === false)) { // check for period
         $actionsplit = split("\.", $this->resource);
         $this->set_param( 'resource', $actionsplit[0]);
-        $this->set_param( 'client_wants', $actionsplit[1] );
+        $this->set( 'client_wants', $actionsplit[1] );
       }
     }
     
@@ -541,7 +581,8 @@ class Mapper {
     }
     
     $params = $this->params;
-    
+    $paramcount = count($params);
+
     while ( count( $params ) > count( $regx ) ) {
       array_shift( $params );
     }
@@ -549,7 +590,8 @@ class Mapper {
     if ( count( $r->patterns ) == 0 ) {
       $r->match = true;
       $pmatches = array();
-    } elseif ( preg_match( "/\/" . implode( "\/", $regx ) . "/i", "/" .implode( "/", $params ), $pmatches ) ) {
+//    } elseif ( preg_match( "/\/" . implode( "\/", $regx ) . "/i", "/" .implode( "/", $params ), $pmatches )  ) {
+    } elseif ( preg_match( "/\/" . implode( "\/", $regx ) . "/i", "/" .implode( "/", $params ), $pmatches ) && count($r->patterns) == $paramcount ) {
       $r->match = true;
     }
     

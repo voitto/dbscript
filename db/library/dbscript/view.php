@@ -2,7 +2,7 @@
 
   /** 
    * dbscript -- restful openid framework
-   * @version 0.4.0 -- 1-May-2008
+   * @version 0.5.0 -- 17-July-2008
    * @author Brian Hendrickson <brian@dbscript.net>
    * @link http://dbscript.net/
    * @copyright Copyright 2008 Brian Hendrickson
@@ -19,7 +19,7 @@
    * @package dbscript
    * @author Brian Hendrickson <brian@dbscript.net>
    * @access public
-   * @version 0.4.0 -- 1-May-2008
+   * @version 0.5.0 -- 17-July-2008
    */
 
 class View {
@@ -33,14 +33,11 @@ class View {
   var $header_sent;
   
   function View() {
-    
     $this->named_vars = array();
     $this->header_sent = false;
-    
     global $db;
     global $request;
     $env =& environment();
-    //$Entry =& $db->get_table( 'entries' );
     if ( isset( $request->resource ))
       $this->collection = new Collection( $request->resource );
     else
@@ -50,7 +47,7 @@ class View {
     $this->named_vars['collection'] =& $this->collection;
     $this->named_vars['response'] =& $this;
     if (check_cookie())
-      $this->named_vars['profile'] =& get_profile(get_cookie_id());
+      $this->named_vars['profile'] =& get_profile();
     else
       $this->named_vars['profile'] = false;
     if ( isset( $request->resource ) && $request->resource != 'introspection' )
@@ -64,10 +61,12 @@ class View {
       if ( file_exists( $cont ))
         $this->controller = $request->resource . ".php";
     }
-
-    if ( file_exists( controller_path() . $this->controller ))
+    
+    if ( is_file( controller_path() . $this->controller ))
       require_once( controller_path() . $this->controller );
-
+    else
+      trigger_error( 'Sorry, the controller was not found at ' . controller_path() . $this->controller, E_USER_ERROR );
+    
     if (!(isset($env['content_types'])))
       trigger_error( 'Sorry, the content_types array was not found in the configuration file', E_USER_ERROR );
     
@@ -99,6 +98,30 @@ class View {
     }
     
     if ( file_exists( $view ) ) {
+      
+      
+      // example response with Accept set to application/rdf+xml
+      
+      //HTTP/1.1 200 OK
+      //Server: Virtuoso/05.00.3028 (Linux) i686-generic-linux-glibc23-32 VDB
+      //Connection: Keep-Alive
+      //Date: Wed, 07 May 2008 15:23:16 GMT
+      //Accept-Ranges: bytes
+      //Content-Length: 0
+      //ETag: "6689-2008-05-07T11:23:16.000000-0-9851f9cbda1201e253939e204e596f4d"
+      //Content-Type: application/rdf+xml
+      
+      // example default response
+      
+      //HTTP/1.1 200 OK
+      //Server: Virtuoso/05.00.3028 (Linux) i686-generic-linux-glibc23-32 VDB
+      //Connection: Keep-Alive
+      //Content-Type: text/html; charset=UTF-8
+      //Date: Wed, 07 May 2008 15:23:47 GMT
+      //Accept-Ranges: bytes
+      //X-XRDS-Location: yadis.xrds
+      //Content-Length: 0
+      
       
       $content_type = 'Content-Type: ' . $this->pick_content_type( $ext );
       if ($this->pick_content_charset( $ext ))
@@ -170,6 +193,9 @@ class View {
       // no template, maybe it's a blobcall
       
       if ((in_array(type_of( $ext ), mime_types())) && !($this->header_sent)) {
+        $model =& $db->get_table($request->resource);
+        if (isset($model->blob))
+          $template = $model->blob;
         trigger_before( $request->action, $request, $db );
         $Member = $this->collection->MoveFirst();
         header( 'Content-Type: ' . type_of( $ext ) );
@@ -217,10 +243,12 @@ class View {
   
   function pick_template_extension( &$request, $template = null ) {
     trigger_before('pick_template_extension',$this,$this);
-    if (isset($request->params['client_wants']))
-      return $request->params['client_wants'];
+    if (!empty($request->client_wants))
+      return $request->client_wants;
       
     $ext = $this->negotiate_content( $request, $template );
+    
+    $this->extension = $ext;
     
     if (!$ext) {
       

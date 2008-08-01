@@ -2,7 +2,7 @@
 
   /**
    * dbscript -- restful openid framework
-   * @version 0.4.0 -- 1-May-2008
+   * @version 0.5.0 -- 17-July-2008
    * @author Brian Hendrickson <brian@dbscript.net>
    * @link http://dbscript.net/
    * @copyright Copyright 2008 Brian Hendrickson
@@ -19,7 +19,7 @@
    * @package dbscript
    * @author Brian Hendrickson <brian@dbscript.net>
    * @access public
-   * @version 0.4.0 -- 1-May-2008
+   * @version 0.5.0 -- 17-July-2008
    */
 
 class Collection extends GenericIterator {
@@ -38,12 +38,14 @@ class Collection extends GenericIterator {
   
   var $updated;
   
+  var $per_page;
+  
   // member_entry_iri will be a media link or member entry
   
   // a media link entry is a member entry that
   // contains metadata about a media resource
   
-  function Collection( $resource, $accept = "text/html" ) {
+  function Collection( $resource, $find_by = NULL, $accept = "text/html" ) {
     
     $this->_currentRow = 0;
     
@@ -53,7 +55,7 @@ class Collection extends GenericIterator {
     
     $this->fields = array();
         
-    if ($resource == null)
+    if ($resource == NULL)
       return;
     
     global $request;
@@ -85,9 +87,6 @@ class Collection extends GenericIterator {
       }
     }
     
-    if (isset($request->params['limit']))
-      $table->set_limit($request->params['limit']);
-    
     if (isset($request->params['offset']))
       $table->set_offset($request->params['offset']);
     
@@ -97,17 +96,15 @@ class Collection extends GenericIterator {
     if (isset($request->params['order']))
       $table->set_order($request->params['order']);
     
-    if (isset($request->params['pagelimit']))
-      $plim = $request->params['pagelimit'];
+    if (isset($table->limit))
+      $this->per_page = $table->limit;
     else
-      $plim = 20;
-    
+      $this->per_page = 20;
+
     if (isset($request->params['page']))
-      $table->set_offset( ($plim * $request->params['page']) - $plim );
-    
-    if (isset($request->params['page']))
-      $table->find(NULL, array($table->primary_key=>'>'.($plim * $request->params['page'])));
-    elseif ( !$request->id )
+      $table->set_offset( ($this->per_page * $request->params['page']) - $this->per_page );
+
+    if ( !$request->id )
       $table->find();
     else
       $table->find( $request->id );
@@ -149,11 +146,7 @@ class Collection extends GenericIterator {
     global $request;
     $model =& $db->models[$this->resource];
     $this->_currentRow++;
-    if (isset($request->params['pagelimit']))
-      $plim = $request->params['pagelimit'];
-    else
-      $plim = 20;
-    if ($this->_currentRow <= $plim) {
+    if ($this->_currentRow <= $this->per_page) {
       if ($model)
         return $model->MoveNext();
     }

@@ -20,24 +20,27 @@ development:
 
 test:
   adapter: mysql
-  database: 
+  database: test
   username: root
   password: 
   host: localhost
 
 production:
   adapter: mysql
-  database: 
+  database: test
   username: root
   password: 
   host: localhost
 
 
 
-
 # environment settings
 
 env:
+  
+  site_title: 
+  
+  theme:
   
   remote_sources:
     dbscript: dbscript.net/?apps
@@ -48,15 +51,12 @@ env:
   
   authentication: email
   
+  debug_enabled: true
+    
   plugins:
     - sessions
     - validation
     - security
-    - notify
-    - ping
-    - wp
-    - openid
-    - oauth
   
   profile:
     - postcode
@@ -75,28 +75,38 @@ env:
   email_user: 
   email_pass: 
   
-  openid_server: https://e-cred.org/server
+  openid_server: 
   
   xrds_services:
-    openid2:
-        type: http://specs.openid.net/auth/2.0/server
-        uri: http://endpoint.example.net
+    oauth:
+        type: 
+        uri: 
+        namespace_id: oauth
+        namespace_uri: 
+        priority: 10
+        local_id_handler: 
+    openid:
+        type: 
+        uri: 
         namespace_id: openid
         namespace_uri: http://openid.net/xmlns/1.0
         priority: 10
-        local_id_handler: http://example.com
+        local_id_handler: 
   
   ldap_server: 
   ldap_context: 
   ldap_user_field: 
   
-  ping_server: http://dejafeed.com/?submit
+  ping_server: 
   
   blocks:
     -categories
   
   collection_cache:
     - posts:
+      duration : 0
+      location : cache
+    - identities:
       duration : 0
       location : cache
   
@@ -166,9 +176,9 @@ env:
       language : en
       size     : 1500
     - 8:
-      id       : rdf
-      qs       : "0.000"
-      type     : application/rdf+xml
+      id       : xrds
+      qs       : "0.100"
+      type     : application/xrds+xml
       encoding : null
       charset  : utf-8
       language : en
@@ -197,14 +207,35 @@ env:
       charset  : utf-8
       language : en
       size     : 1500
+    - 12:
+      id       : rss
+      qs       : "0.900"
+      type     : application/rss+xml
+      encoding : null
+      charset  : utf-8
+      language : en
+      size     : 1500
+    - 13:
+      id       : rdf
+      qs       : "0.000"
+      type     : application/rdf+xml
+      encoding : null
+      charset  : utf-8
+      language : en
+      size     : 1500
+    - 14:
+      id       : foaf
+      qs       : "0.000"
+      type     : application/rdf+xml
+      encoding : null
+      charset  : utf-8
+      language : en
+      size     : 1500
   
   app_folder: app
   view_folder: views
   layout_folder: views
   show_timer: false
-  debug_enabled: true
-  
-  # the following prefs are not implemented:
   
   enable_db_sessions: yes
   enable_db_versions: yes
@@ -216,7 +247,7 @@ env:
   
   load_paths:
     model              : models
-    apphome            : apps
+    apphome            : 
     apppath            : 
     lib                : 
     controller         : 
@@ -227,54 +258,6 @@ env:
     stylesheet         : 
     javascript         : 
     image              : 
-  
-  
-  
-  # future config file settings?
-  
-  #routes:
-  #    - :controller/:resource/:id :
-  #        'requirements' : 
-  #            '[a-zA-Z_-]+(.php)'
-  #            '[a-zA-Z_-]+'
-  #            '[0-9]+'
-  
-  #access_list:
-  #    all                : never
-  #    all                : admin
-  #    name,email,pword   : owner
-  
-  #filter_stack:
-  #    model_security     : $req->action
-  #    session_error      : handle_error
-  #    regex_validate     : save_record
-  #    $req->action       : $req->controller
-  #    render_view        : $req->controller
-  
-  #models:
-  #    - db_sessions:
-  #        let_read:
-  #           all           : session_owner
-  #        let_write:
-  #           all           : session_owner
-  #        fields:
-  #           char_field    : id
-  #           int_field     : access_time
-  #           text_field    : data
-  #        primary_key:
-  #           id
-  #    - db_identity:
-  #        let_read:
-  #           email,name    : always
-  #        let_read:
-  #           all           : identity_owner
-  #        let_write:
-  #           all           : identity_owner
-  #        fields:
-  #           auto_field    : id
-  #           char_field    : email
-  #           char_field    : name
-  #           int_field     : access_time
   
   
   
