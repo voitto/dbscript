@@ -19,48 +19,28 @@ class Identity extends Model {
     $this->char_field( 'bio' );
     $this->char_field( 'avatar' );
     $this->char_field( 'profile' );
+
     $this->char_field( 'fullname' );
-    
     $this->char_field( 'family_name' );
     $this->char_field( 'given_name' );
-    $this->char_field( 'additional_name' );
-    $this->char_field( 'honorific_prefix' );
-    $this->char_field( 'honorific_suffix' );
-    $this->char_field( 'nickname' );
-    $this->char_field( 'password' );
-    $this->char_field( 'title' );
-    $this->char_field( 'role' );
-    $this->char_field( 'organization_name' );
-    $this->char_field( 'organization_unit' );
+
+    $this->char_field( 'nickname', 50 );
+    $this->char_field( 'password', 100 );
 
     $this->file_field( 'photo' );
-    $this->file_field( 'logo' );
     
-    $this->char_field( 'token' );
-    
-    $this->char_field( 'email_type' );
+    $this->char_field( 'token', 20 );
     $this->char_field( 'email_value' );
-    $this->char_field( 'tel_type' );
-    $this->char_field( 'tel_value' );
-    $this->char_field( 'post_office_box' );
-    $this->char_field( 'extended_address' );
-    $this->char_field( 'street_address' );
-    $this->char_field( 'locality' );
-    $this->char_field( 'region' );
-    $this->char_field( 'postal_code' );
-    $this->char_field( 'country_name' );
-    $this->char_field( 'adr_type' );
-    $this->char_field( 'adr_value' );
-    $this->char_field( 'latitude' );
-    $this->char_field( 'longitude' );
-    $this->char_field( 'tz' );
-    $this->char_field( 'dob' );
-    $this->char_field( 'gender' );
-    $this->char_field( 'language' );
-    $this->char_field( 'uid' );
-    $this->char_field( 'rev' );
-    $this->char_field( 'fn' );
-    $this->char_field( 'sort_string' );
+    $this->char_field( 'locality', 100 );
+    $this->char_field( 'region', 100 );
+    $this->char_field( 'postal_code', 20 );
+    $this->char_field( 'country_name', 2 );
+    $this->char_field( 'latitude', 3 );
+    $this->char_field( 'longitude', 3 );
+    $this->char_field( 'tz', 3 );
+    $this->char_field( 'dob', 8 );
+    $this->char_field( 'gender', 1 );
+    $this->char_field( 'language', 2 );
     
     $this->bool_field( 'is_primary', true );
     

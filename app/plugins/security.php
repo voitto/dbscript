@@ -483,7 +483,7 @@ function openid_logout( &$vars ) {
   extract( $vars );
   $_SESSION['openid_complete'] = false;
   //unset($_SESSION['openid_email']);
-  unset($_SESSION['openid_url']);
+  //unset($_SESSION['openid_url']);
   unset($_SESSION['requested_url']);
   unset($_SESSION['openid_complete']);
   unset($_SESSION['oid_return_to']);

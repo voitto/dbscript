@@ -22,7 +22,7 @@ function broadcast_omb_notice( &$model, &$rec ) {
     'resource'=>'__'.$rec->id,
   ));
   
-  $notice_content = $rec->title;
+  $notice_content = substr($rec->title,0,140);
   $notice_url = $notice_uri;
   $license = $i->license;
   

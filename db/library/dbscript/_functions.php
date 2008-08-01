@@ -459,7 +459,7 @@ function introspect_tables() {
 
 function read_cache_blob( &$request, $value ) {
   
-  if ( $arr = environment('collection_cache') ) {
+  if ( $coll = environment('collection_cache') ) {
     
     if (isset($coll[$request->resource])) {
       

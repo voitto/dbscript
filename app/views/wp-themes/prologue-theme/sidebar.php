@@ -14,6 +14,9 @@ if( !function_exists('dynamic_sidebar') || !dynamic_sidebar() ) {
 ?>
   
     <li class="credits">
+      <p>REST engine by <a href="http://dbscript.net/">dbscript</a></p>
+    </li>
+    <li class="credits">
       <p>Prologue theme by <a href="http://automattic.com/">Automattic</a></p>
     </li>
   </ul>

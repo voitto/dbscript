@@ -1,5 +1,5 @@
 
-<form method="post" action="<?php print $submit_url; ?>">
+<form name="loginform" method="post" action="<?php print $submit_url; ?>">
 
   <p>Sign in or register with your OpenID:</p>
   
@@ -15,3 +15,6 @@
 
 </form>
 
+<script language="JavaScript" type="text/javascript">
+  document.forms.loginform.openid_url.focus();
+</script>
