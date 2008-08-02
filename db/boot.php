@@ -180,6 +180,7 @@ if (is_dir( $env['app_folder'] )) {
     $GLOBALS['PATH']['plugins'] = $app . 'plugins' . DIRECTORY_SEPARATOR;
 }
 
+
 if ($env['debug_enabled']) {
   ini_set('display_errors','1');
   ini_set('display_startup_errors','1');

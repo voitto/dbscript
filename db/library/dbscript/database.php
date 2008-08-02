@@ -89,6 +89,12 @@ class Database {
    * @var string[]
    */
   var $datatype_map;
+
+  /**
+   * file to upload after insert
+   * @var string[]
+   */  
+  var $aws_upload;
   
   /**
    * Get Record
@@ -543,6 +549,37 @@ class Database {
     }
     trigger_after( 'delete_record', $this, $rec );
     return $return;
+  }
+
+
+  function aws_delfile(&$rec, $pkvalue) {
+    $ext = extension_for(type_of( $_FILES[strtolower(classify($rec->table))]['name'][$this->aws_upload[0]] ));
+    $aws_file = $rec->table . $pkvalue . "." . $ext;
+    lib_include( 'S3' );
+    $s3 = new S3( environment('awsAccessKey'), environment('awsSecretKey') );
+    if (!$s3)
+      trigger_error( 'Sorry, there was a problem connecting to Amazon Web Services', E_USER_ERROR );
+    if (!($s3->deleteObject(environment('awsBucket'), urlencode($aws_file))))
+      trigger_error( 'Sorry, there was a problem deleting the file from Amazon Web Services', E_USER_ERROR );
+  }
+  
+  
+  function aws_putfile(&$rec, $pkvalue) {
+    global $request;
+    $file = $rec->table . $pkvalue . "." . extension_for(type_of( $_FILES[strtolower(classify($rec->table))]['name'][$this->aws_upload[0]] ));
+    lib_include( 'S3' );
+    $s3 = new S3( environment('awsAccessKey'), environment('awsSecretKey') );
+    if (!$s3)
+      trigger_error( 'Sorry, there was a problem connecting to Amazon Web Services', E_USER_ERROR );
+    $result = $s3->putBucket( environment('awsBucket'), S3::ACL_PUBLIC_READ );
+    if (!$result)
+      trigger_error( 'Sorry, there was a problem creating the bucket '.environment('awsBucket').' at Amazon Web Services', E_USER_ERROR );
+    if (file_exists($this->aws_upload[1])) {
+      if (!($s3->putObjectFile( $this->aws_upload[1] , environment('awsBucket'), $file, S3::ACL_PUBLIC_READ )))
+        trigger_error( 'Sorry, there was a problem uploading the file to Amazon Web Services', E_USER_ERROR );
+      unlink($this->aws_upload[1]);
+    }
+    $this->aws_upload = false;
   }
 
 }

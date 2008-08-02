@@ -141,6 +141,15 @@ class Collection extends GenericIterator {
     
   }
   
+  function rewind() {
+    global $db;
+    global $request;
+    $model =& $db->models[$this->resource];
+    $model->rewind();
+    $this->_currentRow = 0;
+    $this->EOF = false;
+  }
+  
   function MoveNext() {
     global $db;
     global $request;

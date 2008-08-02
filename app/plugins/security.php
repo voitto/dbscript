@@ -88,10 +88,10 @@ function authenticate_with_openid() {
   
   global $request;
   
-  if ( $request->openid_complete )
-    complete_openid_authentication( $request );
-  else
+  if ( !$request->openid_complete )
     begin_openid_authentication( $request );
+  else
+    complete_openid_authentication( $request );
   
 }
 
@@ -108,8 +108,6 @@ function begin_openid_authentication( &$request ) {
   $_SESSION['openid_url'] = $request->openid_url;
   
   global $db;
-  
-  $db->create_openid_tables();
   
   wp_plugin_include(array(
     'wp-openid'
@@ -184,44 +182,36 @@ function complete_openid_authentication( &$request ) {
       $Identity =& $db->get_table( 'identities' );
       $Person =& $db->get_table( 'people' );
       
-      $i = $Identity->find_by( 'url', $_SESSION['openid_url'] );
+      $openid = $_SESSION['openid_url'];
+      if (!strstr($openid,'http'))
+        $openid = 'http://' . $openid;
+
+      $i = $Identity->find_by( 'url', $openid );
       
+      if (!$i && isset($_SESSION['openid_email']))
+        $i = $Identity->find_by( 'email_value', $_SESSION['openid_email'] );
+      
+      // not looking very secure this stuff
+      
+      //if (isset($_GET['openid_sreg_email']))
+      //  $i = $Identity->find_by( 'email_value', $_GET['openid_sreg_email'] );
+      
+      //if (!$i && isset($_GET['openid_sreg_nickname']))
+      //  $i = $Identity->find_by( 'nickname', $_GET['openid_sreg_nickname'] );
+
       if ($i) {
-        // found an existing identity
         $p = $Person->find( $i->person_id );
-        
       } else {
-        
-        // need to create the identity (and person?) because it was not found
-        
-        //if (isset($_GET['openid_sreg_email']))
-        //  $i = $Identity->find_by( 'email_value', $_GET['openid_sreg_email'] );
-        
-        //if (!$i && isset($_GET['openid_sreg_nickname']))
-        //  $i = $Identity->find_by( 'nickname', $_GET['openid_sreg_nickname'] );
-        
-        // identities can be created by an admin with just an email, this adds the OpenID 
+        $p = $Person->base();
+        $p->save();
+        $i = $Identity->base();
+        $i->set_value( 'person_id', $p->id );
+        $i->set_value( 'label', 'profile 1' );
         if (isset($_SESSION['openid_email']))
-          $i = $Identity->find_by( 'email_value', $_SESSION['openid_email'] );
-        
-        // automatic persona creation in people and identities tables
-        // tiptoeing around validates_uniqueness_of rules b/c this is happening
-        // in the background during/after OpenID authentication
-        
-        if ($i) {
-          $p = $Person->find( $i->person_id );
-        } else {
-          $p = $Person->base();
-          $p->save();
-          $i = $Identity->base();
-          $i->set_value( 'person_id', $p->id );
-          $i->set_value( 'label', 'profile 1' );
-          if (isset($_SESSION['openid_email']))
-            $i->set_value( 'email_value', $_SESSION['openid_email'] );
-        }
+          $i->set_value( 'email_value', $_SESSION['openid_email'] );
         
         if (!isset($i->url) || empty($i->url) || strstr( $i->url, "@" ))
-          $i->set_value( 'url', $_SESSION['openid_url'] );
+          $i->set_value( 'url', $openid );
           
         // put SREG data in empty identity fields
         foreach($openid_to_identity as $k=>$v )
@@ -231,6 +221,7 @@ function complete_openid_authentication( &$request ) {
 
         if (isset($_GET['openid_sreg_nickname']) && ( !isset($i->nickname) || empty($i->nickname) )) {
           $nick = strtolower(urldecode($_GET['openid_sreg_nickname']));
+          // set the nickname if it isn't alraedy taken and if it looks like a valid username
           if ($Identity->is_unique_value( $nick, 'nickname' ) && ereg("^([a-zA-Z0-9]+)$", $nick))
             $i->set_value( 'nickname', $nick );
         }
@@ -263,9 +254,15 @@ function complete_openid_authentication( &$request ) {
       else
         redirect_to( $request->base );
     } else {
-      // need to create a person, redirect to input form
+
       trigger_error( "unable to find the Person, sorry", E_USER_ERROR );
+
     }
+
+  } else {
+    
+    // cookie OK
+    
 
   }
   
@@ -475,7 +472,12 @@ function email_submit( &$vars ) {
     $_SESSION['requested_url'] = $request->base;
     redirect_to(environment('openid_server')."/?action=register&return=".urlencode($request->base)."&email=".urlencode($request->email));
   }
-
+  
+  if (!(empty($_SESSION['requested_url'])))
+    redirect_to( $_SESSION['requested_url'] );
+  else
+    redirect_to( $request->base );
+  
 }
 
 function openid_logout( &$vars ) {
@@ -507,16 +509,12 @@ function openid_login( &$vars ) {
   
   global $request;
 
-
   if (isset($request->params['openid'])) {
 
     $openid = urldecode($request->params['openid']);
     
     if (!strstr($openid,'http'))
       $openid = 'http://' . $openid;
-    
-    //if (strstr($openid,'https://'))
-    //  $openid = substr($openid,8);
     
     $request->set_param('return_url',$request->url_for( 'openid_continue' ));
     
@@ -541,8 +539,6 @@ function openid_continue( &$vars ) {
   extract( $vars );
   
   global $openid;
-  
-  $db->create_openid_tables();
   
   wp_plugin_include(array(
     'wp-openid'

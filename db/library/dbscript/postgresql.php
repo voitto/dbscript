@@ -301,9 +301,14 @@ class PostgreSQL extends Database {
     if ($datatype == 'time' && !(strlen($rec->attributes[$modified_field]) > 0))
       $rec->attributes[$modified_field] = date("Y-m-d H:i:s",strtotime("now"));
     if ($datatype == 'blob' && strlen($rec->attributes[$modified_field]) > 0) {
-      $oid = $this->large_object_create($rec->table,$rec->attributes[$modified_field]);
-      if ($oid > 0)
-        $rec->attributes[$modified_field] = $oid;
+      $coll = environment('collection_cache');
+      if (isset($coll[$request->resource]) && $coll[$request->resource]['location'] == 'aws') {
+        $this->aws_upload = array($modified_field,$rec->attributes[$modified_field]);
+      } else {
+        $oid = $this->large_object_create($rec->table,$rec->attributes[$modified_field]);
+        if ($oid > 0)
+          $rec->attributes[$modified_field] = $oid;
+      }      
     }
     if ($datatype == 'bool') {
       if ( in_array( $rec->attributes[$modified_field], $this->true_values, true ) )
@@ -328,19 +333,31 @@ class PostgreSQL extends Database {
         trigger_error( "Sorry, that $modified_field has already been taken.", E_USER_ERROR );
     }
     if ($datatype == 'blob' && (strlen( $rec->attributes[$modified_field] ) > 0 )) {
-      $oid_result = $this->get_result("select ".$modified_field." from ".$rec->table." where ".$rec->primary_key." = '".$rec->attributes[$rec->primary_key]."'");
-      if ($this->num_rows($oid_result) > 0) {
-        $prev_oid = $this->fetch_array($oid_result);
-        if (isset($prev_oid[0]) && $prev_oid[0] > 0)
-          $result = $this->large_object_delete($prev_oid);
+      global $request;
+      $coll = environment('collection_cache');
+      if (isset($coll[$request->resource]) && $coll[$request->resource]['location'] == 'aws') {
+        $this->aws_upload = array($modified_field,$rec->attributes[$modified_field]);
+        $this->aws_delfile($rec,$rec->id);
+        $this->aws_putfile($rec,$rec->id);
+      } else {
+        unlink_cachefile($rec->table,$rec->id,$coll);
+        $oid_result = $this->get_result("select ".$modified_field." from ".$rec->table." where ".$rec->primary_key." = '".$rec->attributes[$rec->primary_key]."'");
+        if ($this->num_rows($oid_result) > 0) {
+          $prev_oid = $this->fetch_array($oid_result);
+          if (isset($prev_oid[0]) && $prev_oid[0] > 0)
+            $result = $this->large_object_delete($prev_oid);
+        }
+        $oid = $this->large_object_create($rec->table,$rec->attributes[$modified_field]);
+        if ($oid > 0)
+          $rec->attributes[$modified_field] = $oid;
       }
-      $oid = $this->large_object_create($rec->table,$rec->attributes[$modified_field]);
-      if ($oid > 0)
-        $rec->attributes[$modified_field] = $oid;
+    
     }
   }
   function post_insert( &$rec, &$result ) {
     trigger_before( 'post_insert', $this, $this );
+    if (is_array($this->aws_upload))
+      $this->aws_putfile($rec,$rec->id);
     if (!$result) { trigger_error("Sorry, the record could not be saved due to a database error.", E_USER_ERROR ); }
   }
   function affected_rows(&$result) {

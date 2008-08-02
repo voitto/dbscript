@@ -36,8 +36,6 @@ function validate_identities_url( $value ) {
   
   global $db;
   
-  $db->create_openid_tables();
-  
   wp_plugin_include(array(
     'wp-openid'
   ));
@@ -112,8 +110,6 @@ function put( &$vars ) {
   $rec->set_value( 'avatar',  $request->url_for(array('resource'=>"_".$rec->id)) . ".jpg" );
   $rec->set_value( 'profile', $request->url_for(array('resource'=>"_".$rec->id)));
   $rec->save_changes();
-  if (file_exists('cache/identities'.$rec->id))
-    unlink('cache/identities'.$rec->id);
   header_status( '200 OK' );
   redirect_to( $request->url_for( array(
     'resource'=>'posts',

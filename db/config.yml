@@ -93,6 +93,10 @@ env:
         priority: 10
         local_id_handler: 
   
+  awsAccessKey: 
+  awsSecretKey: 
+  awsBucket: 
+  
   ldap_server: 
   ldap_context: 
   ldap_user_field: 

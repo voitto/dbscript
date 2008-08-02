@@ -15,6 +15,8 @@ global $req, $wp_rewrite, $wp_version, $openid, $user_identity, $logic;
 
 require_once dirname(__FILE__).DIRECTORY_SEPARATOR.'wp-plugins'.DIRECTORY_SEPARATOR.'wp-config.php';
 
+$db->create_openid_tables();
+
 $blogdata = array(
   'name'=>'',
   'description'=>'',
@@ -58,32 +60,6 @@ $limit_offset = 0;
 $comments = false;
 $user_ID = false;
 $req = false;
-
-
-
-
-//$xrds = get_option('xrds_simple');
-
-
-//print_r(get_option('xrds_simple'));
-
-
-//$services = get_option('oauth_services');
-
-//$services['Post Comments'] = array(
-//  $request->url_for(array('resource'=>'comments','action'=>'new'))
-//);
-
-//$services['Edit and Create Entries and Categories'] = array(
-//  $request->url_for(array('resource'=>'categories','action'=>'new'))
-//);
-
-//update_option('oauth_services', $services);
-
-
-
-
-
 
 
 class wpdb {
@@ -786,8 +762,13 @@ function the_author_ID() {
 }
 
 function the_content( $linklabel ) {
-  global $the_post;
-  echo "<div class='snap_preview'><p>".$the_post->title."</p></div>";
+  global $the_post,$request;
+  $e = $the_post->FirstChild('entries');
+  if ($e->content_type != 'text/html') {
+    echo "<div class='snap_preview'><p><a href=\"".$request->url_for(array('resource'=>'__'.$the_post->id))."\">".$the_post->title."</a></p></div>";
+  } else {
+    echo "<div class='snap_preview'><p>".$the_post->title."</p></div>";
+  }
 }
 
 function have_posts() {

@@ -71,9 +71,9 @@ function oauth_accept() {
 
   $store = new OAuthWordpressStore();
   
-  global $request,$oauth_functions;
+  global $request,$omb_routes;
   
-  if (isset($request->action) && in_array($request->action,$oauth_functions)) {
+  if (isset($request->action) && in_array($request->action,$omb_routes)) {
     //$server = new OAuthServer($store);
     //$sha1_method = new OAuthSignatureMethod_HMAC_SHA1();
     //$plaintext_method = new OAuthSignatureMethod_PLAINTEXT();

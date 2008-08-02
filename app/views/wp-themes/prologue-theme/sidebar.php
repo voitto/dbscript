@@ -1,5 +1,7 @@
 
 <div id="sidebar">
+
+<?php global $request; if ($request->action == 'index') : ?>
   <ul>
 
 <?php 
@@ -20,4 +22,6 @@ if( !function_exists('dynamic_sidebar') || !dynamic_sidebar() ) {
       <p>Prologue theme by <a href="http://automattic.com/">Automattic</a></p>
     </li>
   </ul>
+
+<?php endif; ?>
 </div> <!-- // sidebar -->

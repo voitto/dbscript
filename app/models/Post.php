@@ -17,11 +17,14 @@ class Post extends Model {
     $this->text_field( 'source' );
     
     $this->char_field( 'uri' );
+    $this->char_field( 'url' );
     
     $this->file_field( 'attachment' );
     
     $this->int_field( 'parent_id' );
     $this->int_field( 'profile_id' );
+    
+    $this->bool_field( 'local' );
     
     $this->time_field( 'created' );
     $this->time_field( 'modified' );

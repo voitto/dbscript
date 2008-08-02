@@ -296,7 +296,7 @@ $result = $this->get_result("CREATE TABLE openid_associations (\n".
   }
   function pre_insert( &$rec, $modified_field, $datatype ) {
     trigger_before( 'pre_insert', $rec, $this );
-    global $request; 
+    global $request;
     $req =& $request;
     if (isset($this->models[$rec->table]->field_attrs[$modified_field]['required'])) {
       if (!(strlen( $rec->attributes[$modified_field] ) > 0))
@@ -309,8 +309,14 @@ $result = $this->get_result("CREATE TABLE openid_associations (\n".
     }
     if ($datatype == 'time' && !(strlen($rec->attributes[$modified_field]) > 0))
       $rec->attributes[$modified_field] = date("Y-m-d H:i:s",strtotime("now"));
-    if ($datatype == 'blob' && !(empty($req->params[strtolower(classify($rec->table))][$modified_field])))
-      $rec->attributes[$modified_field] =& $this->large_object_create( $rec->table, $rec->attributes[$modified_field] );
+    if ($datatype == 'blob' && !(empty($req->params[strtolower(classify($rec->table))][$modified_field]))) {
+      $coll = environment('collection_cache');
+      if (isset($coll[$request->resource]) && $coll[$request->resource]['location'] == 'aws') {
+        $this->aws_upload = array($modified_field,$rec->attributes[$modified_field]);
+      } else {
+        $rec->attributes[$modified_field] =& $this->large_object_create( $rec->table, $rec->attributes[$modified_field] );
+      }
+    }
     if ($datatype == 'bool') {
       if ( in_array( $rec->attributes[$modified_field], $this->true_values, true ) ) {
         $rec->attributes[$modified_field] = "1";
@@ -322,7 +328,7 @@ $result = $this->get_result("CREATE TABLE openid_associations (\n".
   function pre_update( &$rec, $modified_field, $datatype ) {
     trigger_before( 'pre_update', $rec, $this );
     global $request; 
-  $req =& $request;  
+    $req =& $request;  
     if (isset($this->models[$rec->table]->field_attrs[$modified_field]['required'])) {
       if (!(strlen( $rec->attributes[$modified_field] ) > 0))
         trigger_error( "$modified_field is a required field", E_USER_ERROR );
@@ -341,8 +347,16 @@ $result = $this->get_result("CREATE TABLE openid_associations (\n".
     }
     if ($datatype == 'blob' && !(empty($req->params[strtolower(classify($rec->table))][$modified_field]))) {
       if ( strlen( $rec->attributes[$modified_field] ) > 0 ) {
-        $data =& $this->large_object_create($rec->table,$rec->attributes[$modified_field]);
-        $rec->attributes[$modified_field] =& $data;
+        $coll = environment('collection_cache');
+        if (isset($coll[$request->resource]) && $coll[$request->resource]['location'] == 'aws') {
+          $this->aws_upload = array($modified_field,$rec->attributes[$modified_field]);
+          $this->aws_delfile($rec,$rec->id);
+          $this->aws_putfile($rec,$rec->id);
+        } else {
+          unlink_cachefile($rec->table,$rec->id,$coll);
+          $data =& $this->large_object_create($rec->table,$rec->attributes[$modified_field]);
+          $rec->attributes[$modified_field] =& $data;
+        }
       }
     }
   }
@@ -350,6 +364,8 @@ $result = $this->get_result("CREATE TABLE openid_associations (\n".
     trigger_before( 'post_insert', $this, $this );
     if (!$result) { trigger_error("Sorry, the record could not be saved due to a database error.", E_USER_ERROR ); }
     $pkvalue = $this->last_insert_id($result,NULL,NULL);
+    if (is_array($this->aws_upload))
+      $this->aws_putfile($rec,$pkvalue);
     $pkfield = $rec->primary_key;
     $rec->attributes[$pkfield] = $pkvalue;
     $rec->$pkfield =& $rec->attributes[$pkfield];

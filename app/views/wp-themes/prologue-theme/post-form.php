@@ -22,7 +22,7 @@ $first_name    = attribute_escape( $user->first_name );
     
     <label for="tags">Tag it</label>
     <input type="text" name="tags" id="tags" autocomplete="off" />
-
+    <input type="hidden" name="post[local]" value="1" />
     <input id="submit" type="submit" value="Post it" />
   </form>
 </div> <!-- // postbox -->

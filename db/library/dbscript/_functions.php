@@ -457,87 +457,130 @@ function introspect_tables() {
 }
 
 
-function read_cache_blob( &$request, $value ) {
+function read_aws_blob( &$request, $value, $coll, $ext ) {
+  if (isset($coll[$request->resource])) {
+    if ($coll[$request->resource]['location'] == 'aws')
+      redirect_to( 'http://' . environment('awsBucket') . '.s3.amazonaws.com/' . $request->resource . $request->id . "." . $ext );
+  }
+}
+
+
+function unlink_cachefile( $table, $id, $coll ) {
+  if (isset($coll[$table])) {
+    $cacheFile = $coll[$table]['location'].DIRECTORY_SEPARATOR.$table.$id;
+    if (file_exists($cacheFile))
+      unlink($cacheFile);
+  }
+}
+
+
+function read_cache_blob( &$request, $value, $coll ) {
   
-  if ( $coll = environment('collection_cache') ) {
+  if (isset($coll[$request->resource])) {
     
-    if (isset($coll[$request->resource])) {
+    if ($coll[$request->resource]['duration'] > 0) {
       
-      if ($coll[$request->resource]['duration'] > 0) {
+      $cacheFile = $coll[$request->resource]['location'].DIRECTORY_SEPARATOR.$request->resource.$request->id;
+      
+      if (!(is_dir($coll[$request->resource]['location'].DIRECTORY_SEPARATOR)))
+        return;
+      
+      if ( file_exists( $cacheFile ) && filemtime( $cacheFile ) > ( time() - $coll[$request->resource]['duration'] ) ) {
         
-        $cacheFile = $coll[$request->resource]['location'].DIRECTORY_SEPARATOR.$request->resource.$request->id;
-        
-        if (!(is_dir($coll[$request->resource]['location'].DIRECTORY_SEPARATOR)))
-          return;
-        
-        if ( file_exists( $cacheFile ) && filemtime( $cacheFile ) > ( time() - $coll[$request->resource]['duration'] ) ) {
-          // read cacheFile
-          if ( !$fp = fopen( $coll[$request->resource]['location'].DIRECTORY_SEPARATOR.'hits', 'a' ) ) {
-            trigger_error( 'Error opening hits file', E_USER_ERROR );
-          }
-          if ( !flock( $fp, LOCK_EX ) ) {
-            trigger_error( 'Unable to lock hits file', E_USER_ERROR );
-          }
-          if( !fwrite( $fp, time_of(timestamp())." hit ".$cacheFile."\n" ) ) {
-            trigger_error( 'Error writing to cache file', E_USER_ERROR );
-          }
-          flock( $fp, LOCK_UN );
-          fclose( $fp );
-          unset( $fp );
-          
-          print file_get_contents( $cacheFile );
-          
-          exit;
-          
-        } else {
-          // write cacheFile
-          if ( !$fp = fopen( $coll[$request->resource]['location'].DIRECTORY_SEPARATOR.'hits', 'a' ) )
-            trigger_error( 'Error opening hits file', E_USER_ERROR );
-          
-          if ( !flock( $fp, LOCK_EX ) )
-            trigger_error( 'Unable to lock hits file', E_USER_ERROR );
-          
-          if( !fwrite( $fp, time_of(timestamp())." ".'write '.$cacheFile."\n" ) )
-            trigger_error( 'Error writing to cache file', E_USER_ERROR );
-          
-          flock( $fp, LOCK_UN );
-          
-          fclose( $fp );
-          
-          unset( $fp );
-          
-          if ( !$fp = fopen( $cacheFile, 'w' ) )
-            trigger_error( 'Error opening cache file', E_USER_ERROR );
-          
-          if ( !flock( $fp, LOCK_EX ) )
-            trigger_error( 'Unable to lock cache file', E_USER_ERROR );
-          
-          if( !fwrite( $fp, fetch_blob($value, true) ) )
-            trigger_error( 'Error writing to cache file', E_USER_ERROR );
-          
-          flock( $fp, LOCK_UN );
-          
-          fclose( $fp );
-          
-          unset( $fp );
-          
-          return;
-          
+        // read cacheFile
+        if ( !$fp = fopen( $coll[$request->resource]['location'].DIRECTORY_SEPARATOR.'hits', 'a' ) ) {
+          trigger_error( 'Error opening hits file', E_USER_ERROR );
         }
+        if ( !flock( $fp, LOCK_EX ) ) {
+          trigger_error( 'Unable to lock hits file', E_USER_ERROR );
+        }
+        if( !fwrite( $fp, time_of(timestamp())." hit ".$cacheFile."\n" ) ) {
+          trigger_error( 'Error writing to cache file', E_USER_ERROR );
+        }
+        flock( $fp, LOCK_UN );
+        fclose( $fp );
+        unset( $fp );
+        
+        print file_get_contents( $cacheFile );
+        
+        exit;
+        
+      } else {
+        // write cacheFile
+        if ( !$fp = fopen( $coll[$request->resource]['location'].DIRECTORY_SEPARATOR.'hits', 'a' ) )
+          trigger_error( 'Error opening hits file', E_USER_ERROR );
+        
+        if ( !flock( $fp, LOCK_EX ) )
+          trigger_error( 'Unable to lock hits file', E_USER_ERROR );
+        
+        if( !fwrite( $fp, time_of(timestamp())." ".'write '.$cacheFile."\n" ) )
+          trigger_error( 'Error writing to cache file', E_USER_ERROR );
+        
+        flock( $fp, LOCK_UN );
+        
+        fclose( $fp );
+        
+        unset( $fp );
+        
+        if ( !$fp = fopen( $cacheFile, 'w' ) )
+          trigger_error( 'Error opening cache file', E_USER_ERROR );
+        
+        if ( !flock( $fp, LOCK_EX ) )
+          trigger_error( 'Unable to lock cache file', E_USER_ERROR );
+        
+        if( !fwrite( $fp, fetch_blob($value, true) ) )
+          trigger_error( 'Error writing to cache file', E_USER_ERROR );
+        
+        flock( $fp, LOCK_UN );
+        
+        fclose( $fp );
+        
+        unset( $fp );
+        
+        return;
+        
       }
     }
   }
 }
 
 
+function download ($file_source, $file_target)
+{
+  // Preparations
+  $file_source = str_replace(' ', '%20', html_entity_decode($file_source)); // fix url format
+  if (file_exists($file_target)) { chmod($file_target, 0777); } // add write permission
 
-function render_blob( $value ) {
+  // Begin transfer
+  if (($rh = fopen($file_source, 'rb')) === FALSE) { return false; } // fopen() handles
+  if (($wh = fopen($file_target, 'wb')) === FALSE) { return false; } // error messages.
+  while (!feof($rh))
+  {
+    // unable to write to file, possibly because the harddrive has filled up
+    if (fwrite($wh, fread($rh, 1024)) === FALSE) { fclose($rh); fclose($wh); return false; }
+  }
+
+  // Finished without errors
+  fclose($rh);
+  fclose($wh);
+  return true;
+}
+
+
+function render_blob( $value, $ext ) {
   
   global $request;
   $req =& $request;
   global $db;
   
-  read_cache_blob($req,$value);
+  $coll = environment('collection_cache');
+  
+  read_aws_blob($req,$value,$coll,$ext);
+  
+  header( 'Content-Type: ' . type_of( $ext ) );
+  header( "Content-Disposition: inline" );
+  
+  read_cache_blob($req,$value,$coll);
   
   fetch_blob($value, false);
   

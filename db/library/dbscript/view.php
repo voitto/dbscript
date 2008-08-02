@@ -198,9 +198,7 @@ class View {
           $template = $model->blob;
         trigger_before( $request->action, $request, $db );
         $Member = $this->collection->MoveFirst();
-        header( 'Content-Type: ' . type_of( $ext ) );
-        header( "Content-Disposition: inline" );
-        render_blob( $Member->$template );
+        render_blob( $Member->$template, $ext );
       }
       
     }

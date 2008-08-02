@@ -1,12 +1,11 @@
 <?php
 
-global $request,$oauth_functions,$db;
-
+global $request,$omb_routes,$db;
 
 define( OMB_VERSION, 'http://openmicroblogging.org/protocol/0.1' );
 define( OAUTH_VERSION, 'http://oauth.net/core/1.0' );
 
-$oauth_functions = array(
+$omb_routes = array(
   'local_subscribe',
   'local_unsubscribe',
   'oauth_omb_post',
@@ -18,7 +17,7 @@ $oauth_functions = array(
   'oauth_authorize'
 );
 
-foreach ($oauth_functions as $func)
+foreach ($omb_routes as $func)
   $request->connect( $func );
 
 
@@ -31,24 +30,6 @@ $request->connect(
   )
 );
 
-// YUCK!!!!! re-fac-tored as :nickname route
-
-//$Identity =& $db->Model('Identity');
-//$Identity->find();
-//while ( $i = $Identity->MoveNext() ) {
-//  if (!empty($i->nickname)) {
-//    $nick = $i->nickname;
-//    $request->connect(
-//      $nick,
-//      array(
-//        'id'         => $i->id,
-//        'resource'   => 'identities',
-//        'action' => 'entry'
-//      )
-//    );
-//  }
-//}
-
 
 $request->connect(
   ':resource/by/:byid/:page',
@@ -56,6 +37,7 @@ $request->connect(
     'requirements' => array ( '[A-Za-z0-9_.]+', '[0-9]+', '[0-9]+' )
   )
 );
+
 
 before_filter( 'omb_filter_posts', 'get_query' );
 
@@ -69,6 +51,11 @@ function omb_filter_posts( &$model, &$db ) {
       'subscriptions.subscriber'=>$request->params['byid']
     );
     $model->set_param( 'find_by', $where );
+  } elseif ($model->table == 'posts') {
+    $where = array(
+      'local'=>1
+    );
+    $model->set_param( 'find_by', $where );
   }
 }
 
@@ -79,10 +66,10 @@ before_filter( 'wp_set_post_fields', 'insert_from_post' );
 
 function wp_set_post_fields( &$model, &$rec ) {
   
+  global $db,$request;
+  
   if ( !(isset($_POST['posttext'])) || !(isset($_POST['tags'])) )
     return;
-  
-  global $db,$request;
   
   //$request->set_param('resource','posts');
   
@@ -110,6 +97,19 @@ function wp_set_post_fields( &$model, &$rec ) {
     }
   }
   
+}
+
+
+after_filter( 'wp_set_post_fields_after', 'insert_from_post' );
+
+function wp_set_post_fields_after( &$model, &$rec ) {
+  global $request;
+  if ($model->table == 'posts') {
+    $rec->set_value( 'uri', $request->url_for( array(
+      'resource'=>'__'.$rec->id,
+    )));
+    $rec->save_changes;
+  }
 }
 
 
@@ -164,11 +164,11 @@ before_filter( 'omb_request_munger', 'routematch' );
 
 function omb_request_munger( &$request, &$route ) {
   
-  global $oauth_functions;
+  global $omb_routes;
   
   // look for a dbscript omb Route in the POST/GET params
   $params = array_merge($_GET,$_POST);
-  foreach($oauth_functions as $func) {
+  foreach($omb_routes as $func) {
     if (array_key_exists($func,$params)) {
         // if found, lie to the mapper about the URI
         $request->set('uri',$request->base."?".$func);
@@ -209,11 +209,11 @@ function filter_MatchesAnyOMBType(&$service)
 
 // subscribe step 1 (remote service)
 
+// a form on this site, submitted by a non-authenticated visitor
+
 function oauth_omb_subscribe( &$vars ) {
   
   extract($vars);
-
-  $db->create_openid_tables();
 
   wp_plugin_include(array(
     'wp-oauth'
@@ -312,13 +312,12 @@ function oauth_omb_subscribe( &$vars ) {
   $req = OAuthRequest::from_consumer_and_token($con, $tok, 'GET', $url, $params);
 
   $omb_subscribe = array();
-  $Person =& $db->model('Person');
-
-  $p = $Person->find( $_SESSION['listenee_id'] );
-  if ($p) {
-    // get an identities activerecord object 
-    // this is an example of traversing a result set without re-querying
-    $i = $p->FirstChild( 'identities' );
+  
+  $Identity =& $db->get_table( 'identities' );
+  
+  $i = $Identity->find( $_SESSION['listenee_id'] );
+  
+  if ($i) {
     if (!(isset($i->nickname)))
       trigger_error('the identity does not have a nickname', E_USER_ERROR);
     $omb_subscribe = array(
@@ -349,14 +348,15 @@ function oauth_omb_subscribe( &$vars ) {
   exit;  
 }
 
-
 // subscribe step 2 (local service)
+
+// a form was submitted at another site
+// and it has bounced a request on behalf of
+// an authenticated user of this site
 
 function oauth_authorize( &$vars ) {
   
   extract($vars);
-
-  $db->create_openid_tables();
 
   wp_plugin_include(array(
     'wp-oauth'
@@ -398,11 +398,20 @@ function oauth_authorize( &$vars ) {
   
   $Identity =& $db->get_table( 'identities' );
   $Person =& $db->get_table( 'people' );
+  $Subscription =& $db->model('Subscription');
   
   $i = $Identity->find_by( 'profile', urldecode($_GET['omb_listenee_profile']) );
-  if ($i) {
-    // found an existing identity
-  } else {
+  
+  if (!$i) {
+    $i = $Identity->find_by( 'url', urldecode($_GET['omb_listenee_homepage']) );
+    if ($i) {
+      $i->set_value( 'profile', urldecode( $_GET['omb_listenee_profile'] ));
+      $i->save_changes();
+    }
+  }
+  
+  if (!$i) {
+    
     // need to create the identity (and person?) because it was not found
     $p = $Person->base();
     $p->save();
@@ -452,12 +461,11 @@ function oauth_authorize( &$vars ) {
     if($_GET['oauth_callback']) {
       
       $Subscription =& $db->model('Subscription');
-  
+      
       $sub = $Subscription->find_by( array(
         'subscribed'=>$_SESSION['listenee_id'],
         'subscriber'=>get_profile_id()
       ));
-  
       
       if (!$sub) {
         $s = $Subscription->base();
@@ -466,9 +474,9 @@ function oauth_authorize( &$vars ) {
         $s->save_changes();
         $s->set_etag(get_person_id());
       }
-
+      
       // response to omb remote service
-
+      
       $i = get_profile();
       
       $omb_subscriber = array(
@@ -505,7 +513,7 @@ function oauth_authorize( &$vars ) {
     //get_header();
     $description = $store->lookup_consumer_description($consumer_key);
     if($description) $description = 'Allow '.$description.' to post notices to your account?';
-      else $description = 'Allow the service you came from to access your account and...';
+      else $description = 'Click &quot;allow&quot; to authorize messages from the remote site.';
     ?>
     <div style="text-align:center;">
       <h2><?php echo $description; ?></h2>
@@ -519,8 +527,8 @@ function oauth_authorize( &$vars ) {
         ?>
           </ul>
           <br />
+          <input type="submit" name="authorize" value="Cancel" />&nbsp;&nbsp;&nbsp;&nbsp;
           <input type="submit" name="authorize" value="Ok" />
-          <input type="submit" name="authorize" value="No" />
         </div>
       </div></form>
     </div>
@@ -531,14 +539,18 @@ function oauth_authorize( &$vars ) {
   
 }
 
+
+
+
 // subscribe step 3 (remote service)
+
+// we have returned from the visitors home site
+// the visitor would like to receive some of our notices
 
 function oauth_omb_finish_subscribe( &$vars ) {
 
   extract($vars);
   
-  $db->create_openid_tables();
-
   wp_plugin_include(array(
     'wp-oauth'
   ));
@@ -563,28 +575,37 @@ function oauth_omb_finish_subscribe( &$vars ) {
   
   $Identity =& $db->get_table( 'identities' );
   $Person =& $db->get_table( 'people' );
-  $i = $Identity->find_by( 'url', $_GET['omb_listener_profile'] );
-  if ($i) {
-    // found an existing identity
-  } else {
+
+  $i = $Identity->find_by( 'profile', $_GET['omb_listener_profile'] );
+  
+  if (!$i) {
+    $i = $Identity->find_by( 'url', $_GET['omb_listener_homepage'] );
+    if ($i) {
+      $i->set_value('profile', $_GET['omb_listener_profile']);
+      $i->save_changes();
+    }
+  }
+    
+  if (!$i) {
     // need to create the identity (and person?) because it was not found
     $p = $Person->base();
     $p->save();
     $i = $Identity->base();
-    $i->set_value( 'url', $_GET['omb_listener_profile'] );
+    $i->set_value( 'url', $_GET['omb_listener_homepage'] );
     $i->set_value( 'label', 'profile 1' );
     $i->set_value( 'person_id', $p->id );
     foreach($listener_params as $k=>$v ) {
-
       if (isset($_GET[$k])) {
         $i->set_value( $v, urldecode($_GET[$k]) );
       }
     }
-    $i->set_value( 'update_profile', $_SESSION['subscriber_update_url'] );
-    $i->set_value( 'post_notice', $_SESSION['subscriber_notice_url'] );
     $i->save_changes();
     $i->set_etag($p->id);
   }
+
+  $i->set_value( 'update_profile', $_SESSION['subscriber_update_url'] );
+  $i->set_value( 'post_notice', $_SESSION['subscriber_notice_url'] );
+  $i->save_changes();
   
   $url = $_SESSION['subscriber_access_token_url'];
   $parsed = parse_url($url);
@@ -597,10 +618,7 @@ function oauth_omb_finish_subscribe( &$vars ) {
   $req->set_parameter('omb_version', OMB_VERSION);
 
   $req->sign_request($sha1_method, $consumer, $token);
-  //$route = 'access_token';
-  //$atoken = str_replace("?oauth_version","?".$route."&oauth_version",$atoken->to_url());
 
-  //print_r($part);
   $curl = curl_init($url);
   curl_setopt($curl, CURLOPT_FOLLOWLOCATION, true);
   curl_setopt($curl, CURLOPT_HEADER, false);
@@ -610,37 +628,49 @@ function oauth_omb_finish_subscribe( &$vars ) {
   curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
   $atoken = curl_exec($curl);
   curl_close($curl);
-
- 
+  
+  
   parse_str($atoken, $result);
-
+  
   if (!(isset($result['oauth_token']) && isset($result['oauth_token_secret'])))
     trigger_error( 'could not find the access token!',E_USER_ERROR);
+  
   $Subscription =& $db->model( 'Subscription' );
-  $s = $Subscription->base();
-  $s->set_value( 'subscriber', $i->id );
-  $s->set_value( 'subscribed', $_SESSION['listenee_id'] );
-  $s->set_value( 'token', $result['oauth_token'] );
-  $s->set_value( 'secret', $result['oauth_token_secret'] );
-  $s->save();
-  $p = $i->FirstChild('people');
-  $s->set_etag($p->id);
-
+  
+  $sub = $Subscription->find_by( array(
+    'subscribed'=>$_SESSION['listenee_id'],
+    'subscriber'=>$i->id
+  ));
+  
+  if (!$sub) { 
+    
+    $sub = $Subscription->base();
+    $sub->set_value( 'subscriber', $i->id );
+    $sub->set_value( 'subscribed', $_SESSION['listenee_id'] );
+    $sub->save();
+    $p = $i->FirstChild('people');
+    $sub->set_etag($p->id);
+  
+  }
+  
+  $sub->set_value( 'token', $result['oauth_token'] );
+  $sub->set_value( 'secret', $result['oauth_token_secret'] );
+  
+  $sub->save_changes();
+  
   redirect_to(array(
-        'resource'=>'identities',
-        'id'=>$_SESSION['listenee_id'] ));
+        'resource'=>'_'.$_SESSION['listenee_id'] ));
 }
-
-
 
 
 // subscribe step 4 (local service)
 
+// a remote site has been authorized to
+// connect and it wants its credential
+
 function access_token( &$vars ) {
   
   extract($vars);
-
-  $db->create_openid_tables();
 
   wp_plugin_include(array(
     'wp-oauth'
@@ -663,13 +693,9 @@ function access_token( &$vars ) {
 }
 
 
-
-
 function request_token( &$vars ) {
   
   extract($vars);
-  
-  $db->create_openid_tables();
 
   wp_plugin_include(array(
     'wp-oauth'
@@ -703,11 +729,10 @@ function oauth_omb_post( &$vars ) {
   
   extract($vars);
   
-  $db->create_openid_tables();
-
   wp_plugin_include(array(
     'wp-oauth'
   ));
+  
   $store = new OAuthWordpressStore();
   $server = new OAuthServer($store);
   $sha1_method = new OAuthSignatureMethod_HMAC_SHA1();
@@ -726,11 +751,12 @@ function oauth_omb_post( &$vars ) {
   $listenee = $req->get_parameter('omb_listenee');
 
   $Identity =& $db->model('Identity');
+  
   $sender = $Identity->find_by('profile',$listenee);
   
-  $Subscription =& $db->model('Subscription');
-  $sub = $Subscription->find_by('token', $token->key);
-  
+  if (!($sender))
+    $sender = $Identity->find_by('url',$listenee);
+
   $content = $req->get_parameter('omb_notice_content');
   
   $notice_uri = $req->get_parameter('omb_notice');
@@ -738,13 +764,14 @@ function oauth_omb_post( &$vars ) {
   $notice_url = $req->get_parameter('omb_notice_url');
   
   $Post =& $db->model('Post');
+  
   $p = $Post->find_by('uri',$notice_uri);
   
   if (!$p) {
     $p = $Post->base();
-    //$notice->profile_id = $sender->id;
     $p->set_value( 'profile_id', $sender->id );
     $p->set_value( 'uri', $notice_uri );
+    $p->set_value( 'url', $notice_url );
     $p->set_value( 'title', $content );
     $p->save_changes();
     $p->set_etag($sender->person_id);
