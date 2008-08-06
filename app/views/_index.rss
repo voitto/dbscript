@@ -15,8 +15,7 @@
     </items>
   </channel>
 <?php while( $Member = $collection->MoveNext() ) : ?>
-  <?php $entry = $Member->FirstChild('entries'); ?>
-  <?php $profile = get_profile($entry->person_id); ?>
+  <?php $profile = get_profile($Member->profile_id); ?>
   <item rdf:about="<?php url_for( array( 'resource'=>$collection->resource, 'id'=>$Member->id )); ?>">
   <title><?php print $Member->title; ?></title>
     <link><?php url_for( array( 'resource'=>$collection->resource, 'id'=>$Member->id )); ?></link>

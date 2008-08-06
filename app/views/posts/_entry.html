@@ -112,17 +112,18 @@
   <table align="center" cellpadding="3" cellspacing="0" border="0">
   <?php $Post =& $db->model('Post'); $Post->has_one('profile_id:identities'); $Post->find_by('parent_id',$Member->id); ?>
   <?php while ($c = $Post->MoveNext()) : ?>
-  <?php $author = $c->FirstChild('identities'); ?>
-  <?php echo "<tr><td><p><font size=\"-1\">".'reply by '.$author->nickname."&nbsp; ".time_of($c->created)."</font></p></td></tr><tr><td><p>".htmlentities($c->title)."</p><br></td></tr>"; ?>
+  <?php $replyauthor = $c->FirstChild('identities'); ?>
+  <?php echo "<tr><td><p><font size=\"-1\">".'reply by '.$replyauthor->nickname."&nbsp; ".time_of($c->created)."</font></p></td></tr><tr><td><p>".htmlentities($c->title)."</p><br></td></tr>"; ?>
   <?php endwhile; ?>
   </table>
   </td>
 </tr>
 
 <tr><td colspan="2">
-<?php $Review =& $db->model('Review'); $Review->find_by('target_id',$Entry->id); ?>
-<?php while ( $r = $Review->MoveNext()) : ?>
+<?php $Review =& $db->model('Review'); $Review->has_one('profile_id:identities'); $Review->find_by('target_id',$Entry->id); ?>
 
+<?php while ( $r = $Review->MoveNext()) : ?>
+<?php $reviewer = $r->FirstChild('identities'); ?>
 <?php $i = 0; ?>
 
 <?php while ($i < $r->rating) : ?>
@@ -134,11 +135,11 @@
 <img src="app/views/reviews/empty_star.gif" alt="">
 <?php $i++; ?>
 <?php endwhile; ?>
-<?php print "<font size=\"-1\">".$r->reviewer." ".time_of($r->created)."</font><br>"; ?>
+<?php print "<font size=\"-1\">".$reviewer->nickname." ".time_of($r->created)."</font><br>"; ?>
 
 <?php endwhile; ?>
 
-
+<br />
 </td></tr>
 
 
@@ -180,13 +181,16 @@
 <tr><td colspan="2"><p>Reply:</p>
 
 <form name="replypost" method="post" action="<?php url_for(array('resource'=>'posts')); ?>">
+<input type="hidden" name="method" value="post">
 <textarea cols="40" maxlength="140" rows="5" name="post[title]"><?php if ($author) print "@".$author->nickname." "; ?></textarea>
 <input type="hidden" name="post[local]" value="1">
 <input type="hidden" name="post[parent_id]" value="<?php print $Member->id; ?>">
 <input type="hidden" name="post[profile_id]" value="<?php echo get_profile_id(); ?>">
+<input type="submit" value="Submit Reply">
+</form>
 
 
-
+<br />
 </td></tr>
 
 <tr><td colspan="2"><p>Rating:</p>
@@ -194,6 +198,8 @@
 
 
 
+<form name="reviewpost" method="post" action="<?php url_for(array('resource'=>'reviews')); ?>">
+<input type="hidden" name="method" value="post">
 
 
 <?php $i = 0; ?>
@@ -209,10 +215,13 @@
 <?php $i++; ?>
 <?php endwhile; ?>
 
+
+
+
 <input type="hidden" name="review[target_id]" value="<?php print $Entry->id; ?>">
-<input type="hidden" name="method" value="post">
+<input type="hidden" name="review[profile_id]" value="<?php echo get_profile_id(); ?>">
 <input type="hidden" name="review[reviewer]" value="<?php if ($ident) print $ident->nickname; ?>">
-<input type="submit" value="Submit">
+<input type="submit" value="Submit Rating">
 </form>
 
 

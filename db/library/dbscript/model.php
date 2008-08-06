@@ -194,7 +194,7 @@ class Model {
         $rec->set_value( $field, $req->params[strtolower(classify($table))][$field] );
       }
       // save
-      if ($rec->table == 'reviews') {print_r($rec); exit;}
+      
       $result = $rec->save_changes();
       
       if ( !$result )

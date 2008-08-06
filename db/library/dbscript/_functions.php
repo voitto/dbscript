@@ -1456,18 +1456,18 @@ function get_profile($id=NULL) {
   
   global $db,$response;
   
-  $Identity =& $db->get_table( 'identities' );
-  $Person =& $db->get_table( 'people' );
-  
-  if (!($id == NULL))
+  if (!($id == NULL)) {
+    $Identity =& $db->get_table( 'identities' );
     return $Identity->find($id);
+  } else {
+    $id = get_person_id();
+  }
   
   if (isset($response->named_vars['profile']))
     return $response->named_vars['profile'];
   
-  if ($id == NULL)
-    $id = get_person_id();
-  
+  $Person =& $db->get_table( 'people' );
+
   $p = $Person->find($id);
   
   if ($p) {
@@ -1481,19 +1481,10 @@ function get_profile($id=NULL) {
 
 function get_profile_id() {
   
-  global $db,$response;
+  $profile = get_profile();
   
-  $Identity =& $db->get_table( 'identities' );
+  return $profile->id;
   
-  if (isset($response->named_vars['profile']))
-    $i =& $response->named_vars['profile'];
-  else
-    $i = $Identity->find( get_person_id() );
-  
-  if ($i)
-    return $i->id;
-  
-  return false;
 }
 
 

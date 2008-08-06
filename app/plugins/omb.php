@@ -62,6 +62,48 @@ function omb_filter_posts( &$model, &$db ) {
 }
 
 
+
+
+// this is a filter to redirect to the post that was REPLIED TO
+
+after_filter( 'forward_after_reply', 'insert_from_post' );
+
+function forward_after_reply( &$model, &$rec ) {
+  
+  global $request,$db;
+  
+  if (!($model->table == 'posts'))
+    return;
+  
+  if (isset($request->params['post']['parent_id']))
+    redirect_to(array('resource'=>'posts','id'=>$request->params['post']['parent_id']));
+  
+}
+
+
+// this is a filter to redirect to the reviewed resource
+
+after_filter( 'forward_after_review', 'insert_from_post' );
+
+function forward_after_review( &$model, &$rec ) {
+  
+  global $request,$db;
+
+  if (!($model->table == 'reviews'))
+    return;
+  
+  $Entry =& $db->model('Entry');
+  
+  $e = $Entry->find($rec->target_id);
+
+  if ($e)
+    redirect_to(array('resource'=>$e->resource,'id'=>$e->record_id));
+  else
+    trigger_error('Sorry, I was not able to save the review.', E_USER_ERROR );
+  
+}
+
+
 // this is a filter to handle posts from the prologue theme
 
 before_filter( 'wp_set_post_fields', 'insert_from_post' );

@@ -17,6 +17,8 @@ class Review extends Model {
     
     // item_info values -- fn_url/fn_photo/hCard/hCalendar
     
+    $this->int_field( 'profile_id' );
+    
     $this->char_field( 'reviewer' );
     $this->char_field( 'dtreviewed' );
     

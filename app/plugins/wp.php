@@ -408,7 +408,7 @@ function get_currentuserinfo() {
   if ( ! empty($current_user) )
     return;
   
-  $uid = get_person_id();
+  $uid = get_profile_id();
   
   if (!$uid)
     authenticate_with_openid();
@@ -599,7 +599,7 @@ function wp_get_current_commenter() {
 }
 
 function wp_get_current_user() {
-  return new WP_User(get_person_id());
+  return new WP_User(get_profile_id());
 }
 
 function wp_get_archives($type) {
@@ -689,12 +689,12 @@ function the_post() {
   if (isset($the_post->profile_id)){
     $the_author = get_profile($the_post->profile_id);
   }else{
+    global $db;
+    $Identity =& $db->model('Identity');
     $the_entry = $the_post->FirstChild( 'entries' );
     if ($the_entry->person_id) {
-      $the_author = get_profile($the_entry->person_id);
+      $the_author = $Identity->find_by('entries.person_id',$the_entry->person_id);
     } else {
-      global $db;
-      $Identity =& $db->model('Identity');
       $the_author = $Identity->base();
     }
   }
