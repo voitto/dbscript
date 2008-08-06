@@ -2,7 +2,7 @@
    
   /** 
    * dbscript -- restful openid framework
-   * @version 0.5.0 -- 17-July-2008
+   * @version 0.5.0 -- 8-August-2008
    * @author Brian Hendrickson <brian@dbscript.net>
    * @link http://dbscript.net/
    * @copyright Copyright 2008 Brian Hendrickson
@@ -43,7 +43,7 @@
    Version 0.3.0, 10-Jun-2007
      models for Group, Membership, Identity
    
-   Version 0.5.0, 17-July-2008
+   Version 0.5.0, 8-August-2008
      new templates: vcard, hcard, ics, rdf, json, atom
    
    */
@@ -351,6 +351,16 @@ before_filter( 'model_security', $request->action );
   // if public resource, ping the search index server
 after_filter( 'send_ping', 'insert_from_post' );
 after_filter( 'send_ping', 'update_from_post' );
+
+
+
+// authenticate yourself without OpenID
+
+function test_log_in() {
+  $person_id = 1;
+  $_SESSION['openid_complete'] = false;
+  set_cookie($person_id);
+}
 
 
 

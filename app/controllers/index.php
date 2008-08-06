@@ -17,7 +17,10 @@ function post( &$vars ) {
   extract( $vars );
   $resource->insert_from_post( $request );
   header_status( '201 Created' );
-  redirect_to( $request->resource );
+  if ($request->id)
+    redirect_to( array('resource'=>$request->resource, 'id'=>$request->id ) );
+  else
+    redirect_to( $request->resource );
 }
 
 

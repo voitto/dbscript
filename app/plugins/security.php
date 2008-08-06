@@ -2,7 +2,7 @@
 
   /** 
    * dbscript -- restful openid framework
-   * @version 0.5.0 -- 17-July-2008
+   * @version 0.5.0 -- 8-August-2008
    * @author Brian Hendrickson <brian@dbscript.net>
    * @link http://dbscript.net/
    * @copyright Copyright 2008 Brian Hendrickson
@@ -138,18 +138,13 @@ function begin_openid_authentication( &$request ) {
   
   $store =& WordPressOpenID_Logic::getStore();
   
-  if( $store->get_user_by_identity( $auth_request->endpoint->identity_url ) == NULL )
-    $attribute_query = true;
-  
-  if ($attribute_query) {
-    $sreg_request = Auth_OpenID_SRegRequest::build(array(),array(
-      'nickname',
-      'email',
-      'fullname'
-    ));
-    if ($sreg_request)
-      $auth_request->addExtension($sreg_request);
-  }
+  $sreg_request = Auth_OpenID_SRegRequest::build(array(),array(
+    'nickname',
+    'email',
+    'fullname'
+  ));
+  if ($sreg_request)
+    $auth_request->addExtension($sreg_request);
     
   $_SESSION['oid_return_to'] = $return_to;
   

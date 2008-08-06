@@ -2,7 +2,7 @@
 
   /** 
    * dbscript -- restful openid framework
-   * @version 0.5.0 -- 17-July-2008
+   * @version 0.5.0 -- 8-August-2008
    * @author Brian Hendrickson <brian@dbscript.net>
    * @link http://dbscript.net/
    * @copyright Copyright 2008 Brian Hendrickson
@@ -26,7 +26,7 @@
    * @package dbscript
    * @author Brian Hendrickson <brian@dbscript.net>
    * @access public
-   * @version 0.5.0 -- 17-July-2008
+   * @version 0.5.0 -- 8-August-2008
    * @todo support array datatypes
    */
 
@@ -549,8 +549,10 @@ class PostgreSQL extends Database {
   }
   
   function create_openid_tables() {
+    
     if (in_array('openid_identities',$this->tables))
       return;
+      
     $result = $this->get_result("CREATE TABLE openid_identities ( uurl_id int NOT NULL, user_id int NOT NULL default '0', url text, hash char(32) )");
 
     $result = $this->get_result("CREATE TABLE oauth_consumers (consumer_key CHAR(255) PRIMARY KEY, secret CHAR(40), description CHAR(40))");
@@ -559,11 +561,16 @@ class PostgreSQL extends Database {
 
     $result = $this->get_result("INSERT INTO oauth_consumers (consumer_key, secret, description) VALUES ('DUMMYKEY', '', 'Unidentified Consumer')");
 //;
-$result = $this->get_result("CREATE TABLE openid_nonces ( server_url VARCHAR(2047), timestamp INT, salt CHAR(40) )");
-//;
-$result = $this->get_result("CREATE TABLE openid_associations ( server_url VARCHAR(2047), handle VARCHAR(255), secret CHAR(40), issued INTEGER, lifetime INTEGER, assoc_type VARCHAR(64) )");
 
+    $result = $this->get_result("CREATE TABLE openid_nonces (server_url VARCHAR(2047), timestamp INTEGER, ".
+            "salt CHAR(40), UNIQUE (server_url, timestamp, salt))");
 
+        
+    $result = $this->get_result("CREATE TABLE openid_associations (server_url VARCHAR(2047), handle VARCHAR(255), ".
+            "secret BYTEA, issued INTEGER, lifetime INTEGER, ".
+            "assoc_type VARCHAR(64), PRIMARY KEY (server_url, handle), ".
+            "CONSTRAINT secret_length_constraint CHECK ".
+            "(LENGTH(secret) <= 128))");
   }
 
   function auto_field( $field, &$model ) {
@@ -629,7 +636,7 @@ $result = $this->get_result("CREATE TABLE openid_associations ( server_url VARCH
     if (!array_key_exists($pkfield,$model->field_array))
       $sql .= "$table.$pkfield as \"$table.$pkfield\", " . "\n";
     foreach ($model->field_array as $fieldname=>$datatypename) {
-      if (!(!(strpos($fieldname,".") === false)))
+      if (strpos($fieldname,".") === false)
         $fieldname = $table . "." . $fieldname;
       $fieldstring .= "$fieldname as \"$fieldname\", " . "\n";
     }
@@ -683,7 +690,7 @@ $result = $this->get_result("CREATE TABLE openid_associations ( server_url VARCH
           $op = $val;
         } else {
           
-          if (!(!(strpos($col,".") === false)))
+          if (strpos($col,".") === false)
             $field = "$table.$col";
           else
             $field = $col;
@@ -698,7 +705,11 @@ $result = $this->get_result("CREATE TABLE openid_associations ( server_url VARCH
         }
       }
     } elseif ($model->id != NULL) {
-      $sql .= " WHERE $table.".$model->find_by." = '".$model->id."' ";
+      if (strpos($model->find_by,".") === false)
+        $field = $table.".".$model->find_by;
+      else
+        $field = $model->find_by;
+      $sql .= " WHERE $field = '".$model->id."' ";
     }
 
     if (!(isset($model->orderby)))

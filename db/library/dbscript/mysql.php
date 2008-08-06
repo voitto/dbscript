@@ -2,7 +2,7 @@
 
   /** 
    * dbscript -- restful openid framework
-   * @version 0.5.0 -- 17-July-2008
+   * @version 0.5.0 -- 8-August-2008
    * @author Brian Hendrickson <brian@dbscript.net>
    * @link http://dbscript.net/
    * @copyright Copyright 2008 Brian Hendrickson
@@ -26,7 +26,7 @@
    * @package dbscript
    * @author Brian Hendrickson <brian@dbscript.net>
    * @access public
-   * @version 0.5.0 -- 17-July-2008
+   * @version 0.5.0 -- 8-August-2008
    * @todo support array datatypes
    */
 
@@ -114,6 +114,24 @@ class MySQL extends Database {
   function create_openid_tables() {
     if (in_array('oauth_consumers',$this->tables))
       return;
+      
+          $result = $this->get_result("CREATE TABLE openid_identities (
+    uurl_id bigint(20) NOT NULL auto_increment,
+    user_id bigint(20) NOT NULL default '0',
+    url text,
+    hash char(32),
+    PRIMARY KEY  (uurl_id),
+    UNIQUE KEY uurl (hash),
+    KEY url (url(30)),
+    KEY user_id (user_id)
+    )");
+$result = $this->get_result("CREATE TABLE openid_nonces (\n".
+            "  server_url VARCHAR(2047),\n".
+            "  timestamp INTEGER,\n".
+            "  salt CHAR(40),\n".
+            "  UNIQUE (server_url(255), timestamp, salt)\n".
+            ")");
+      
 //CREATE TABLE openid_identities ( uurl_id int NOT NULL, user_id int NOT NULL default '0', url text, hash char(32) )
 
 //CREATE TABLE oauth_consumers (consumer_key CHAR(255) PRIMARY KEY, secret CHAR(40), description CHAR(40));
@@ -399,7 +417,7 @@ $result = $this->get_result("CREATE TABLE openid_associations (\n".
     $return = false;
     if (is_array($file))
       return $return;
-    if (!(file_exists($file))) { trigger_error("temporary file could not be found", E_USER_ERROR ); }
+    if (!(file_exists($file))) { trigger_error("temporary file $file could not be found", E_USER_ERROR ); }
     $handle = fopen($file,"r");
     if (!$handle) { trigger_error("Error creating large object in fopen", E_USER_ERROR ); }
     $buffer = fread($handle,filesize($file));
@@ -549,7 +567,7 @@ $result = $this->get_result("CREATE TABLE openid_associations (\n".
       $sql .= "$table.$pkfield as \"$table.$pkfield\", " . "\n";
     foreach ($model->field_array as $fieldname=>$datatypename) {
       // loop to add each field to the sql query
-      if (!(!(strpos($fieldname,".") === false)))
+      if (strpos($fieldname,".") === false)
         $fieldname = $table . "." . $fieldname;
       $fieldstring .= "$fieldname as \"$fieldname\", " . "\n";
     }
@@ -601,7 +619,7 @@ $result = $this->get_result("CREATE TABLE openid_associations (\n".
           $op = $val;
         } else {
           
-          if (!(!(strpos($col,".") === false)))
+          if (strpos($col,".") === false)
             $field = "$table.$col";
           else
             $field = $col;
@@ -616,7 +634,11 @@ $result = $this->get_result("CREATE TABLE openid_associations (\n".
         }
       }
     } elseif ($model->id != NULL) {
-      $sql .= " WHERE $table.".$model->find_by." = '".$model->id."' ";
+      if (strpos($model->find_by,".") === false)
+        $field = $table.".".$model->find_by;
+      else
+        $field = $model->find_by;
+      $sql .= " WHERE $field = '".$model->id."' ";
     }
     
     if (!(isset($model->orderby))) {
@@ -640,7 +662,7 @@ $result = $this->get_result("CREATE TABLE openid_associations (\n".
     $sql .= $model->order . $this->query_limit($model->limit,$model->offset);
     
     trigger_after( 'get_query', $model, $this );
-    //if ($model->table == 'posts') { echo $sql; exit; }
+    //if ($model->table == 'reviews') { echo $sql; exit; }
     return $sql;
     
   }

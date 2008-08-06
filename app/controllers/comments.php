@@ -28,6 +28,7 @@ function post( &$vars ) {
       $Review->insert_from_post( $request );
   header( 'Status: 201 Created' );
   $e = $Entry->find($request->comment['target_id']);
+  exit;
   redirect_to( array('resource'=>$e->resource, 'id'=>$e->record_id));
 }
 

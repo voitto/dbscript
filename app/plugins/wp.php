@@ -211,9 +211,11 @@ class wpdb {
       return true;
     global $db;
     
-    if ( preg_match("/^\\s*(delete) /i",$query) ){
+    if ( preg_match("/^\\s*(delete) /i",$query) )
       $query = str_replace("LIMIT 1","",$query);
-    }
+
+    if ( preg_match("/^\\s*(replace into) /i",$query) )
+      return;
     
     $this->result = $db->get_result($query);
     if ( preg_match("/^\\s*(insert|delete|update|replace) /i",$query) ) {
@@ -721,7 +723,7 @@ function the_title() {
 }
 
 function prologue_get_avatar( $current_user_id, $author_email, $pixels ) {
-  global $the_author;
+  global $the_author,$request;
   $avatar = "";
   if (!empty($the_author->avatar)) {
     $avatar = $the_author->avatar;
@@ -730,7 +732,7 @@ function prologue_get_avatar( $current_user_id, $author_email, $pixels ) {
     $avatar = $p->avatar;
   }
   if (!(empty($avatar)))
-    return '<img alt="" src="' . $avatar . '" style="width:'.$pixels.'px;height:'.$pixels.'px;" class="avatar" />';
+    return '<a href="'.$request->url_for(array('resource'=>$the_author->nickname)).'"><img alt="avatar" src="' . $avatar . '" style="width:'.$pixels.'px;height:'.$pixels.'px;" class="avatar" /></a>';
 }
 
 function get_the_author_email() {
@@ -764,10 +766,25 @@ function the_author_ID() {
 function the_content( $linklabel ) {
   global $the_post,$request;
   $e = $the_post->FirstChild('entries');
+  
+  $title = $the_post->title;
+  
+  if (strpos($title, '@') !== false) {
+    $expl = explode( " ", $title );
+    if (is_array($expl)){
+      foreach($expl as $k=>$v) {
+        if (substr($v,0,1) == '@') {
+          $expl[$k] = "<a href=\"".$request->url_for(array('resource'=>''.$v))."\">@".substr($v,1)."</a>";
+        }
+      }
+      $title = implode(" ", $expl);
+    }
+  }
+  
   if ($e->content_type != 'text/html') {
     echo "<div class='snap_preview'><p><a href=\"".$request->url_for(array('resource'=>'__'.$the_post->id))."\">".$the_post->title."</a></p></div>";
   } else {
-    echo "<div class='snap_preview'><p>".$the_post->title."</p></div>";
+    echo "<div class='snap_preview'><p>".$title."</p></div>";
   }
 }
 

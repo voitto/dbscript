@@ -1,6 +1,6 @@
 <?php 
 
-  $request =& request_object();
+  global $request;
   $post = strtolower(classify($request->resource));
 
 ?>
@@ -33,7 +33,7 @@
   <tr><td colspan="2" valign="top"><p>&nbsp;</p></td></tr>
 
   <?php
-       $db =& db_object();
+       global $db;
        $Category =& $db->model('Category');
        //$Category->find();
        

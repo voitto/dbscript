@@ -2,7 +2,7 @@
 
   /** 
    * dbscript -- restful openid framework
-   * @version 0.5.0 -- 17-July-2008
+   * @version 0.5.0 -- 8-August-2008
    * @author Brian Hendrickson <brian@dbscript.net>
    * @link http://dbscript.net/
    * @copyright Copyright 2008 Brian Hendrickson
@@ -47,7 +47,7 @@
    * @package dbscript
    * @author Brian Hendrickson <brian@dbscript.net>
    * @access public
-   * @version 0.5.0 -- 17-July-2008
+   * @version 0.5.0 -- 8-August-2008
    */
 
 class Model {
@@ -194,6 +194,7 @@ class Model {
         $rec->set_value( $field, $req->params[strtolower(classify($table))][$field] );
       }
       // save
+      if ($rec->table == 'reviews') {print_r($rec); exit;}
       $result = $rec->save_changes();
       
       if ( !$result )
@@ -935,6 +936,13 @@ class Model {
     global $request;
     
     trigger_before( 'find', $this, $db );
+    
+    if ($id != NULL)
+      $id = $db->escape_string($id);
+
+    if ($find_by != NULL)
+      foreach ($find_by as $k=>$v)
+        $v = $db->escape_string($v);
     
     // special index-find subselect behavior for (metadata) tables (tables with a target_id field)
     if (( strstr( $request->action, "index" )) && array_key_exists( 'target_id', $this->field_array ))

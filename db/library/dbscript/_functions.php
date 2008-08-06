@@ -2,7 +2,7 @@
 
   /** 
    * dbscript -- restful openid framework
-   * @version 0.5.0 -- 17-July-2008
+   * @version 0.5.0 -- 8-August-2008
    * @author Brian Hendrickson <brian@dbscript.net>
    * @link http://dbscript.net/
    * @copyright Copyright 2008 Brian Hendrickson
@@ -16,6 +16,7 @@
    * 
    * takes a table/resource name ('entries')
    * makes it singular & capitalized ('Entry')
+   * massively crude, needs replacing with actual inflector
    *
    * @access public
    * @param string $resource
@@ -58,6 +59,7 @@ function classify( $resource ) {
    * 
    * takes a (CamelCase or not) name ('DbSession')
    * makes it lower_case and plural ('db_sessions')
+   * this implementation is just stupid and needs replacing
    * 
    * @access public
    * @param string $table
@@ -128,13 +130,14 @@ function dbscript_error( $errno, $errstr, $errfile, $errline ) {
         $xml .= "  <dbscript_error>Fatal error in line $errline of file $errfile<br>: $errstr</dbscript_error>\n";
         $xml .= "</root>\n";
         print $xml;
-      } elseif (isset($req->error)) {
+      } elseif ($req->error) {
         $req->handle_error( $errstr );
         print "<b>ERROR</b> [$errno] $errstr<br>\n";
         print "  Fatal error in line $errline of file $errfile<br>\n";
         print "Aborting...<br>\n";
       } else {
         print "<br /><br />$errstr<br /><br />\n";
+        print "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<form><input type=\"submit\" value=\"&lt; &lt; Go Back\" onClick=\"JavaScript:document.history.back();\" /></form>";
         if (environment('debug_enabled'))
           print "  Fatal error in line $errline of file $errfile<br>\n";
       }
@@ -394,20 +397,6 @@ function session_started() {
 }
 
 
-  /**
-   * db_object
-   * 
-   * get global Database object
-   * 
-   * @access public
-   * @return string
-   */
-  
-function &db_object() {
-  global $db;
-  return $db;
-}
-
 
   /**
    * loader
@@ -651,7 +640,7 @@ function template_exists( &$request, $extension, $template ) {
 
 function form_for( &$resource, &$member, $url ) {
 
-  $request =& request_object();
+  global $request;
 
   if (is_object($resource)) {
     
@@ -680,7 +669,7 @@ function form_for( &$resource, &$member, $url ) {
 
 function url_for( $params, $altparams = NULL ) {
 
-  $request =& request_object();
+  global $request;
   
   print $request->url_for( $params, $altparams );
   
@@ -689,7 +678,7 @@ function url_for( $params, $altparams = NULL ) {
 
 function base_url() {
 
-  $request =& request_object();
+  global $request;
   
   print $request->base;
   
@@ -706,7 +695,7 @@ function base_url() {
 
 function redirect_to( $param, $altparam = NULL ) {
   
-  $request =& request_object();
+  global $request;
   
   // check for qooxdoo "POST" and bail before redirect
   if (strstr($request->uri,"&method="))
@@ -834,9 +823,7 @@ function mime_types() {
 
 function render( $param, $value ) {
   
-  global $db;
-  $response =& response_object();
-  $request =& request_object();
+  global $db,$response,$request;
 
   if ( $param == 'action' && !(strpos($value,".") === false ) ) {
     $spleet = split( "\.", $value );
@@ -878,7 +865,7 @@ function member_of( $group ) {
   if (!is_array($memberships)) {
     $memberships = array();
 
-    $request =& request_object();
+    global $request;
   
 
   
@@ -983,9 +970,7 @@ function is_email($email) {
 
 function render_partial( $template ) {
   
-  $request =& request_object();
-  
-  $response =& response_object();
+  global $request,$response;
   
   if (!(strpos($template,".") === false)) {
     $spleet = split("\.",$template);
@@ -1040,7 +1025,7 @@ function theme_path() {
 
 function content_for_layout() {
   
-  $request =& request_object();
+  global $request;
   
   render_partial( $request->action );
   
@@ -1048,23 +1033,8 @@ function content_for_layout() {
 
 
 function breadcrumbs() {
-  $request =& request_object();
-  echo $request->breadcrumbs();
-}
-
-
-  /**
-   * request_object
-   * 
-   * get global Mapper object
-   * 
-   * @access public
-   * @return Mapper
-   */
-  
-function &request_object() {
   global $request;
-  return $request;
+  echo $request->breadcrumbs();
 }
 
 
@@ -1072,6 +1042,7 @@ function register_type( $arr ) {
   global $variants;
   $variants[] = $arr;
 }
+
 
 function photoCreateCropThumb ($p_thumb_file, $p_photo_file, $p_max_size, $p_quality = 100) {
   
@@ -1146,21 +1117,6 @@ function content_types() {
     return $env['content_types'];
   else
     return $variants;
-}
-
-
-  /**
-   * response_object
-   * 
-   * get global View object
-   * 
-   * @access public
-   * @return View
-   */
-  
-function &response_object() {
-  global $response;
-  return $response;
 }
 
 
@@ -1498,18 +1454,16 @@ function can_edit( $post ) {
 
 function get_profile($id=NULL) {
   
-  global $db;
+  global $db,$response;
   
   $Identity =& $db->get_table( 'identities' );
   $Person =& $db->get_table( 'people' );
   
-  $view =& response_object();
-  
   if (!($id == NULL))
     return $Identity->find($id);
   
-  if (isset($view->named_vars['profile']))
-    return $view->named_vars['profile'];
+  if (isset($response->named_vars['profile']))
+    return $response->named_vars['profile'];
   
   if ($id == NULL)
     $id = get_person_id();
@@ -1527,14 +1481,12 @@ function get_profile($id=NULL) {
 
 function get_profile_id() {
   
-  global $db;
+  global $db,$response;
   
   $Identity =& $db->get_table( 'identities' );
   
-  $view =& response_object();
-  
-  if (isset($view->named_vars['profile']))
-    $i =& $view->named_vars['profile'];
+  if (isset($response->named_vars['profile']))
+    $i =& $response->named_vars['profile'];
   else
     $i = $Identity->find( get_person_id() );
   
@@ -1556,10 +1508,10 @@ function get_profile_id() {
 
 function get_person_id() {
   
-  $view =& response_object();
+  global $response;
   
-  if (isset($view->named_vars['profile'])) {
-    $i = $view->named_vars['profile'];
+  if (isset($response->named_vars['profile'])) {
+    $i = $response->named_vars['profile'];
     if ($i)
       return $i->person_id;
   }
@@ -2086,6 +2038,9 @@ function getLocaltime($GMT,$dst){
         return $gmdate;
 }
 
+function make_token($int='99') {
+  return dechex(crc32($int.microtime()));
+}
 
 function normalize_username($username) {
   $username = preg_replace('|[^https?://]?[^\/]+/(xri.net/([^@]!?)?)?/?|', '', $username);

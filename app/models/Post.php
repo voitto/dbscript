@@ -23,6 +23,7 @@ class Post extends Model {
     
     $this->int_field( 'parent_id' );
     $this->int_field( 'profile_id' );
+    $this->int_field( 'recipient_id' );
     
     $this->bool_field( 'local' );
     

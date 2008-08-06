@@ -7,7 +7,7 @@
   <?php while( $Category = $collection->MoveNext() ) : ?>
 
     <tr>
-      <td>
+      <td>  
 
           <?php print $Category->name; ?>
       </td>
@@ -20,7 +20,7 @@
         
         
           <?php
-            $db =& db_object();
+            global $db;
             $Entry =& $db->get_table('entries');
             $Join =& $db->get_table('categories_entries');
             $Join->find_by('category_id',$Category->id);

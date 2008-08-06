@@ -1,6 +1,6 @@
 <?php 
 
-  $request =& request_object();
+  global $request;
 
 ?>
 <table align="center" cellpadding="3" cellspacing="0" border="0"><tr><td colspan="2"><br></td></tr>
@@ -92,7 +92,7 @@
 <tr>
   <td align="right"><p></p></td>
   <td>
-  <?php print time_of($Member->created) ?>
+  <?php $author = get_profile($Member->profile_id); print $author->nickname." ".time_of($Member->created); ?>
   </td>
 </tr>
 
@@ -110,16 +110,18 @@
 <td align="right"><p></p></td>
   <td>
   <table align="center" cellpadding="3" cellspacing="0" border="0">
-  
-  <?php while ($c = $Member->NextChild('comments')) echo "<tr><td><p><font size=\"-1\">".$c->name."&nbsp; ".time_of($c->created)."</font></p></td></tr><tr><td><p>".htmlentities($c->comment)."</p><br></td></tr>"; ?>
-  
+  <?php $Post =& $db->model('Post'); $Post->has_one('profile_id:identities'); $Post->find_by('parent_id',$Member->id); ?>
+  <?php while ($c = $Post->MoveNext()) : ?>
+  <?php $author = $c->FirstChild('identities'); ?>
+  <?php echo "<tr><td><p><font size=\"-1\">".'reply by '.$author->nickname."&nbsp; ".time_of($c->created)."</font></p></td></tr><tr><td><p>".htmlentities($c->title)."</p><br></td></tr>"; ?>
+  <?php endwhile; ?>
   </table>
   </td>
 </tr>
 
 <tr><td colspan="2">
-
-<?php while ( $r = $Member->NextChild('reviews')) : ?>
+<?php $Review =& $db->model('Review'); $Review->find_by('target_id',$Entry->id); ?>
+<?php while ( $r = $Review->MoveNext()) : ?>
 
 <?php $i = 0; ?>
 
@@ -170,18 +172,18 @@
   else
     $ident = $Identity->base();
   
-  // replace with get_profile(get_person_id())
   
 ?>
 
 
 
-<tr><td colspan="2"><p>Comment:</p>
+<tr><td colspan="2"><p>Reply:</p>
 
-<form method="post" action="<?php url_for('comments'); ?>">
-<textarea cols="40" rows="5" name="comment[comment]"></textarea>
-<input type="hidden" name="comment[target_id]" value="<?php print $Entry->id; ?>">
-<input type="hidden" name="comment[name]" value="<?php if ($ident) print $ident->given_name." ".$ident->family_name; ?>">
+<form name="replypost" method="post" action="<?php url_for(array('resource'=>'posts')); ?>">
+<textarea cols="40" maxlength="140" rows="5" name="post[title]"><?php if ($author) print "@".$author->nickname." "; ?></textarea>
+<input type="hidden" name="post[local]" value="1">
+<input type="hidden" name="post[parent_id]" value="<?php print $Member->id; ?>">
+<input type="hidden" name="post[profile_id]" value="<?php echo get_profile_id(); ?>">
 
 
 
@@ -209,7 +211,7 @@
 
 <input type="hidden" name="review[target_id]" value="<?php print $Entry->id; ?>">
 <input type="hidden" name="method" value="post">
-<input type="hidden" name="review[reviewer]" value="<?php if ($ident) print $ident->given_name." ".$ident->family_name; ?>">
+<input type="hidden" name="review[reviewer]" value="<?php if ($ident) print $ident->nickname; ?>">
 <input type="submit" value="Submit">
 </form>
 
@@ -318,7 +320,14 @@
   </td>
 </tr>
 
-
+ <script type="text/javascript">
+    	// <![CDATA[
+  
+  document.replypost.post[title].focus();
+    
+    	// ]]>
+    </script>
+    
 
 
 </table>

@@ -43,6 +43,8 @@ class Review extends Model {
     
     // permissions
     
+    $this->let_read( 'all:always' );
+    $this->let_create( 'all:members' );
     $this->let_access( 'all:administrators' );
     
     $this->set_hidden();

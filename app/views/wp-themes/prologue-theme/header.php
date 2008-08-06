@@ -87,8 +87,68 @@ body {
 }
 </style>
 <?php } ?>
+
+<?php if (get_profile_id()) : ?>
+
+<script type="text/javascript" src="resource/jquery-1.2.1.min.js"></script>
+<script type="text/javascript" src="resource/jquery.flash.js"></script>
+<script type="text/javascript" src="resource/jquery.jqUploader.js"></script>
+
+
+
+<?php endif; ?>
+<script type="text/javascript">
+$(document).ready(function(){
+	$('#postfile').jqUploader({
+	  background:'FFFFFF',
+	  barColor:'336699',
+	  allowedExt:'*.avi; *.jpg; *.jpeg; *.mp3; *.mov',
+	  allowedExtDescr: 'Movies, Photos and Songs',
+	  validFileMessage: 'Click [Upload]',
+	  endMessage: '',
+	  hideSubmit: false
+	});
+});
+</script>
+ <script type="text/javascript">
+   
+    
+function setMaxLength() {
+	var x = document.getElementsByTagName('textarea');
+	var counter = document.createElement('div');
+	counter.className = 'counter';
+	for (var i=0;i<x.length;i++) {
+		if (x[i].getAttribute('maxlength')) {
+			var counterClone = counter.cloneNode(true);
+			counterClone.relatedElement = x[i];
+			counterClone.innerHTML = '<span>0</span>/'+x[i].getAttribute('maxlength');
+			x[i].parentNode.insertBefore(counterClone,x[i].nextSibling);
+			x[i].relatedElement = counterClone.getElementsByTagName('span')[0];
+
+			x[i].onkeyup = x[i].onchange = checkMaxLength;
+			x[i].onkeyup();
+		}
+	}
+}
+
+function checkMaxLength() {
+	var maxLength = this.getAttribute('maxlength');
+	var currentLength = this.value.length;
+	if (currentLength > maxLength)
+		this.relatedElement.className = 'toomuch';
+	else
+		this.relatedElement.className = '';
+	this.relatedElement.firstChild.nodeValue = currentLength;
+	// not innerHTML
+}
+
+
+    </script>
+    
+
+
   </head>
-<body>
+<body onLoad="JavaScript:setMaxLength();">
 
 <div id="wrapper">
 

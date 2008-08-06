@@ -43,7 +43,7 @@ before_filter( 'omb_filter_posts', 'get_query' );
 
 function omb_filter_posts( &$model, &$db ) {
   global $request;
-  if (isset($request->params['byid']) && $model->table == 'posts'){
+  if (isset($request->params['byid']) && $request->resource == 'posts' && $model->table == 'posts'){
     $model->has_many( 'profile_id:subscriptions.subscribed' );
     $where = array(
       'op'=>'OR',
@@ -51,11 +51,13 @@ function omb_filter_posts( &$model, &$db ) {
       'subscriptions.subscriber'=>$request->params['byid']
     );
     $model->set_param( 'find_by', $where );
-  } elseif ($model->table == 'posts') {
+  } elseif ($model->table == 'posts' && $request->resource == 'posts' && $request->id == 0) {
     $where = array(
       'local'=>1
     );
     $model->set_param( 'find_by', $where );
+  } elseif ($model->table == 'posts' && $request->resource == 'posts') {
+    // meh
   }
 }
 
@@ -65,13 +67,23 @@ function omb_filter_posts( &$model, &$db ) {
 before_filter( 'wp_set_post_fields', 'insert_from_post' );
 
 function wp_set_post_fields( &$model, &$rec ) {
-  
   global $db,$request;
+
+  if (isset($_POST['postfile'])) {
+    $Upload =& $db->model('Upload');
+    $u = $Upload->find_by('name',urldecode($_POST['postfile']));
+    if ($u) {
+      $_FILES = array(
+        'post' => array( 
+          'name' => array( 'attachment' => $u->name ),
+          'tmp_name' => array( 'attachment' => $u->tmp_name )
+      ));
+      $db->delete_record( $u );
+    }
+  }
   
   if ( !(isset($_POST['posttext'])) || !(isset($_POST['tags'])) )
     return;
-  
-  //$request->set_param('resource','posts');
   
   if ( isset( $_POST['posttext'] ))
     $request->set_param( array( 'post', 'title' ), $_POST['posttext'] );
@@ -110,6 +122,27 @@ function wp_set_post_fields_after( &$model, &$rec ) {
     )));
     $rec->save_changes;
   }
+}
+
+
+after_filter('do_ajaxy_fileupload','routematch');
+
+function do_ajaxy_fileupload(&$request,&$route) {
+  if (!isset($_FILES['Filedata']['name']))
+    return;
+  if (!(is_writable('cache')))
+    exit;
+  global $db;
+  $Upload =& $db->model('Upload');
+  $result = $db->get_result("DELETE FROM uploads WHERE name = '".$db->escape_string(urldecode($_FILES['Filedata']['name']))."'");
+  $u = $Upload->base();
+  $tmp = 'cache/'.make_token().".". extension_for(type_of($_FILES['Filedata']['name']));
+  $u->set_value('name', urldecode($_FILES['Filedata']['name']));
+  $u->set_value('tmp_name', $tmp);
+  $u->save_changes();
+  move_uploaded_file($_FILES['Filedata']['tmp_name'], $tmp);
+  echo "200 OK";
+  exit;
 }
 
 

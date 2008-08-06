@@ -57,6 +57,10 @@ $subscribers = array();
 <input type="submit" value="Subscribe to <?php echo $Member->nickname; ?>'s notices">
 </form>
 
+<br />
+<a href="<?php url_for(array('resource'=>$pro->nickname)); ?>">Go back to My Profile</a>
+
+
 <?php elseif (isset($pro->id) && $pro->id > 0 && ($pro->id != $Member->id) && in_array($pro->id,$subscribers)) : ?>
 
 <form method="post" action="<?php url_for('local_unsubscribe'); ?>">
@@ -64,6 +68,9 @@ $subscribers = array();
 <input type="hidden" name="listenee_id" value="<?php echo $Member->id; ?>">
 <input type="submit" value="Unsubscribe from <?php echo $Member->nickname; ?>'s notices">
 </form>
+
+<br />
+<a href="<?php url_for(array('resource'=>$pro->nickname)); ?>">Go back to My Profile</a>
 
 <?php elseif (isset($pro->id) && $pro->id > 0 && ($pro->id == $Member->id)) : ?>
 <br />

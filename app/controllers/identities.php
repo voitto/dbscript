@@ -91,7 +91,7 @@ function post( &$vars ) {
   $p->save();
   if (empty($request->params['identity']['url']))
   $request->params['identity']['url'] = $a;
-  $request->params['identity']['token'] = dechex(crc32($p->id.microtime()));
+  $request->params['identity']['token'] = make_token($p->id);
   $request->params['identity']['person_id'] = $p->id;
   $resource->insert_from_post( $request );
   $i = $Identity->find( $request->id );
