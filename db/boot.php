@@ -172,8 +172,8 @@ if (is_dir( $env['app_folder'] )) {
   $GLOBALS['PATH']['app'] = $app;
   $GLOBALS['PATH']['controllers'] = $app . 'controllers' . DIRECTORY_SEPARATOR;
   $GLOBALS['PATH']['models'] = $app . 'models' . DIRECTORY_SEPARATOR;
-  if ( file_exists( $app . 'config.yml' ) ) {
-    extract($loader->load(file_get_contents($app.'config.yml')));
+  if ( file_exists( $app . 'config' . DIRECTORY_SEPARATOR . 'config.yml' ) ) {
+    extract($loader->load(file_get_contents($app . 'config' . DIRECTORY_SEPARATOR .'config.yml')));
     extract( $$env['enable_db'] );
   }
   if (is_dir( $app . 'plugins' . DIRECTORY_SEPARATOR ))
@@ -356,10 +356,12 @@ after_filter( 'send_ping', 'update_from_post' );
 
 // authenticate yourself without OpenID
 
+//test_log_in();
+
 function test_log_in() {
   $person_id = 1;
-  $_SESSION['openid_complete'] = false;
   set_cookie($person_id);
+  $_SESSION['openid_complete'] = true;
 }
 
 

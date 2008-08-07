@@ -608,6 +608,10 @@ function wp_get_archives($type) {
 
 function get_header() {
   global $request;
+  
+  // this should be a separate filter, but it catches
+  // folks who are not completely set-up and sends them
+  // to the identity edit form to add a photo and nickname
     
     if (get_profile_id()) {
     
@@ -691,11 +695,16 @@ function the_post() {
   }else{
     global $db;
     $Identity =& $db->model('Identity');
-    $the_entry = $the_post->FirstChild( 'entries' );
-    if ($the_entry->person_id) {
-      $the_author = $Identity->find_by('entries.person_id',$the_entry->person_id);
+    if ($the_post) {
+      $the_entry = $the_post->FirstChild( 'entries' );
+      if ($the_entry->person_id) {
+        $the_author = $Identity->find_by('entries.person_id',$the_entry->person_id);
+      } else {
+        $the_author = $Identity->base();
+      }
     } else {
-      $the_author = $Identity->base();
+      $Post =& $db->model('Post');
+      $the_post = $Post->base();
     }
   }
   return "";
@@ -769,12 +778,15 @@ function the_content( $linklabel ) {
   
   $title = $the_post->title;
   
-  if (strpos($title, '@') !== false) {
+  if (strpos($title, 'http') !== false || strpos($title, '@') !== false) {
     $expl = explode( " ", $title );
     if (is_array($expl)){
       foreach($expl as $k=>$v) {
         if (substr($v,0,1) == '@') {
           $expl[$k] = "<a href=\"".$request->url_for(array('resource'=>''.$v))."\">@".substr($v,1)."</a>";
+        }
+        if (substr($v,0,4) == 'http') {
+          $expl[$k] = "<a href=\"".$v."\">".$v."</a>";
         }
       }
       $title = implode(" ", $expl);
@@ -929,13 +941,16 @@ function add_custom_image_header( $var, $name ) {
 
 function edit_post_link( $post ) {
   global $the_post,$request;
-  echo "<a href=\"";
-  echo $request->url_for(array(
+  if ($the_post->profile_id == get_profile_id())
+  echo "<a href=\"".$request->url_for(array(
     'resource'  => 'posts',
     'id'        => $the_post->id,
     'action'    => 'edit'
-  ));
-  echo "\">edit</a>";
+  ))."\">edit</a>&nbsp;|&nbsp;<a href=\"".$request->url_for(array(
+    'resource'  => 'posts',
+    'id'        => $the_post->id,
+    'action'    => 'remove'
+  ))."\">remove</a>";
 }
 
 function comments_rss_link() {

@@ -46,6 +46,7 @@ function send_email_notice( &$model, &$rec ) {
   
   // loop over each group
   while ($g = $Group->MoveNext()) {
+    if (in_array($g->name,array('administrators','everyone','members'))) continue;
     
     // if the GROUP has READ or CREATE then do notify its members
     if ($rec->id && (in_array($g->name,$datamodel->access_list['read']['id']) ||
@@ -59,12 +60,16 @@ function send_email_notice( &$model, &$rec ) {
         
         if ($p) {
           
+          $action = $request->action;
+          
+          $notify = "notify_".$action;
+          
           // get an identities activerecord object for the person's first identity
           // this is an example of traversing the result dataset without re-querying
           $i = $p->FirstChild( 'identities' );
           
           // if we haven't already sent this person a message
-          if (is_email($i->email_value) && !(in_array($i->email_value, $sent_to))) {
+          if (isset($m->$notify) && ($m->$notify) && is_email($i->email_value) && !(in_array($i->email_value, $sent_to))) {
             
             // a token may be set to allow the notify-ee to "EXPRESS" register as a new site user
             // it fills in some of the "new user" form info such as e-mail address for them
@@ -88,24 +93,24 @@ function send_email_notice( &$model, &$rec ) {
             </html>';
             
             // oh wait, we are not going to send the HTML it is just wasting space for now
-            // comment this out to try some HTML for yourself
+            // comment this out to try the HTML yourself
             $html = false;
             
+            // this is the body of the e-mail if ($html == false)
+            $text = 'Content was updated at the following location:'."\r\n\r\n".$addr."\r\n\r\n";
+            
             // change the e-mail subject line depending on what action took place
-            if ($request->action == 'post')
+            if ($action == 'post')
               $actionmessage = " created a new ";
-            elseif ($request->action == 'put')
+            elseif ($action == 'put')
               $actionmessage = " updated a ";
-            elseif ($request->action == 'delete')
+            elseif ($action == 'delete')
               $actionmessage = " deleted a ";
             
             // set the e-mail subject to the current user's first name
             // classify() converts a table name "nerds" to "Nerd"
             // the converse is tableize()
             $subject = $profile->given_name.$actionmessage.classify($request->resource);
-            
-            // this is the actual body of the e-mail we are using
-            $text = 'Content was updated at the following location:'."\r\n\r\n".$addr."\r\n\r\n";
             
             // this sends e-mail using the xpertmailer package
             // the environment() function reads a value from the config.yml file

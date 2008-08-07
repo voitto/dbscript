@@ -48,11 +48,13 @@ class Post extends Model {
     
     // permissions
     
-    //$this->let_access( 'all:always' );
+    $this->let_read(    'all:always' );
     
-    $this->let_read( 'all:always' );
-    $this->let_create( 'all:members' );
-    $this->let_access( 'all:administrators' );
+    $this->let_create(  'all:members' );
+    $this->let_write(   'all:members' );
+    $this->let_delete(  'all:members' );
+    
+    $this->let_access(  'all:administrators' );
     
   }
   

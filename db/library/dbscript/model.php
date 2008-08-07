@@ -1000,6 +1000,10 @@ class Model {
     if ( $offset > 0 ) $this->offset = $offset;
   }
   
+  function set_groupby( $col ) {
+    if ( strlen( $col ) > 0 ) $this->groupby = $this->table . "." . $col;
+  }
+  
   function set_orderby( $col ) {
     if ( strlen( $col ) > 0 ) $this->orderby = $this->table . "." . $col;
   }

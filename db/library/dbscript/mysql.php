@@ -657,12 +657,15 @@ $result = $this->get_result("CREATE TABLE openid_associations (\n".
       $model->limit = 20;
     }
     
+    if (isset($model->groupby))
+      $sql .= " GROUP BY " . $model->groupby . " ";
+    
     $sql .= " ORDER BY " . $model->orderby . " ";
     
     $sql .= $model->order . $this->query_limit($model->limit,$model->offset);
     
     trigger_after( 'get_query', $model, $this );
-    //if ($model->table == 'reviews') { echo $sql; exit; }
+    //if ($model->table == 'people') { echo $sql; exit; }
     return $sql;
     
   }

@@ -112,39 +112,11 @@ class OAuthSignatureMethod_HMAC_SHA1 extends OAuthSignatureMethod {/*{{{*/
       
     }
     
-    
-//    $raw = str_replace("%257E","~",$raw);
-//    $raw = str_replace("%7E","~",$raw);
-//    
-//    if ($request->action == 'access_token') {
-//      $raw = str_replace("oauth_consumer_key",urlencode($request->action."=&")."oauth_consumer_key",$raw);
-//      $raw .= '%26omb_version%3Dhttp%253A%252F%252Fopenmicroblogging.org%252Fprotocol%252F0.1';
-//    } else {
-//      $raw .= urlencode("&".$request->action."=");
-//    }
-    
-    
-    global $request;
-    
-
     $raw = str_replace("%2B","%2520",$raw);
     $raw = str_replace("%257E","~",$raw);
     $raw = str_replace("%7E","~",$raw);
 
-    if ($request->action == 'access_token') {
-      //$raw = str_replace("oauth_consumer_key",urlencode($request->action."=&")."oauth_consumer_key",$raw);
-      //$raw .= '%26omb_version%3Dhttp%253A%252F%252Fopenmicroblogging.org%252Fprotocol%252F0.1';
-    } elseif (!($request->action == 'oauth_omb_finish_subscribe')) {
-      //$raw .= urlencode("&".$request->action."=");
-    }
-    if ($request->action == 'request_token'){
-      //echo "RTOK ".$raw."<BR><BR>";exit;
-    }
-
-    if ($request->action == 'oauth_omb_finish_subscribe'){
-      //echo "AeTOK ".$raw."<BR><BR>";
-    }
-    $hashed = base64_encode(hash_hmac("sha1", $raw, $key, TRUE));
+    $hashed = base64_encode(hash_hmac("sha1", trim($raw), trim($key), TRUE));
     return $hashed;
   }/*}}}*/
 }/*}}}*/

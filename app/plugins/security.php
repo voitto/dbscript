@@ -109,47 +109,78 @@ function begin_openid_authentication( &$request ) {
   
   global $db;
   
-  wp_plugin_include(array(
-    'wp-openid'
-  ));
+  if (class_exists('MySQL')) {
   
-  $logic = new WordPressOpenID_Logic(null);
+    wp_plugin_include(array(
+      'wp-openid'
+    ));
   
-  $logic->activate_plugin();
+    $logic = new WordPressOpenID_Logic(null);
+  
+    $logic->activate_plugin();
     
-  if( !WordPressOpenID_Logic::late_bind() )
-    return;
+    if( !WordPressOpenID_Logic::late_bind() )
+      return;
   
-  $redirect_to = '';
+    $redirect_to = '';
   
-  if( !empty( $_SESSION['requested_url'] ) )
-    $redirect_to = $_SESSION['requested_url'];
+    if( !empty( $_SESSION['requested_url'] ) )
+      $redirect_to = $_SESSION['requested_url'];
   
-  $claimed_url = $request->openid_url;
+    $claimed_url = $request->openid_url;
   
-  $consumer = WordPressOpenID_Logic::getConsumer();
+    $consumer = WordPressOpenID_Logic::getConsumer();
   
-  $auth_request = $consumer->begin( $claimed_url );
+    $auth_request = $consumer->begin( $claimed_url );
   
-  if ( null === $auth_request )
-    trigger_error('OpenID server not found at '. htmlentities( $claimed_url ), E_USER_ERROR);
+    if ( null === $auth_request )
+      trigger_error('OpenID server not found at '. htmlentities( $claimed_url ), E_USER_ERROR);
   
-  $return_to = $request->url_for( 'openid_continue' );
+    $return_to = $request->url_for( 'openid_continue' );
   
-  $store =& WordPressOpenID_Logic::getStore();
+    $store =& WordPressOpenID_Logic::getStore();
   
-  $sreg_request = Auth_OpenID_SRegRequest::build(array(),array(
-    'nickname',
-    'email',
-    'fullname'
-  ));
-  if ($sreg_request)
-    $auth_request->addExtension($sreg_request);
+    $sreg_request = Auth_OpenID_SRegRequest::build(array(),array(
+      'nickname',
+      'email',
+      'fullname'
+    ));
+    if ($sreg_request)
+      $auth_request->addExtension($sreg_request);
     
-  $_SESSION['oid_return_to'] = $return_to;
+    $_SESSION['oid_return_to'] = $return_to;
   
-  WordPressOpenID_Logic::doRedirect($auth_request, $request->protected_url, $return_to);
-  exit(0);
+    WordPressOpenID_Logic::doRedirect($auth_request, $request->protected_url, $return_to);
+    exit(0);
+  
+  } else {
+    
+    include_once $GLOBALS['PATH']['library'] . 'openid.php';
+  
+    $openid = new SimpleOpenID;
+  
+    $openid->SetIdentity( $request->openid_url );
+  
+    $openid->SetApprovedURL( $request->url_for( 'openid_continue' )); // y'all come back now
+  
+    $openid->SetTrustRoot( $request->protected_url ); // protected site
+    $openid->SetTrustRoot( $request->protected_url ); // protected site
+  
+    $openid->SetOptionalFields(array(
+      'nickname',
+      'email',
+      'fullname'
+    )); 
+    $openid->SetRequiredFields(array());
+    $server_url = $openid->GetOpenIDServer();
+  
+    $_SESSION['openid_server_url'] = $server_url;
+    #echo $server_url; exit;
+    $openid->SetOpenIDServer( $server_url );
+  
+    redirect_to( $openid->GetRedirectURL() );
+    
+  }
   
 }
 
@@ -533,36 +564,64 @@ function openid_continue( &$vars ) {
   
   extract( $vars );
   
-  global $openid;
-  
-  wp_plugin_include(array(
-    'wp-openid'
-  ));
-  
-  $logic = new WordPressOpenID_Logic(null);
-  
-  $logic->activate_plugin();
-  
-  $consumer = WordPressOpenID_Logic::getConsumer();
-  
-  $openid->response = $consumer->complete($_SESSION['oid_return_to']);
+  if (class_exists('MySQL')) {
     
-  switch( $openid->response->status ) {
-    case Auth_OpenID_CANCEL:
-      trigger_error('OpenID assertion cancelled', E_USER_ERROR );
-      break;
+    global $openid;
+    
+    wp_plugin_include(array(
+      'wp-openid'
+    ));
+    
+    $logic = new WordPressOpenID_Logic(null);
+    
+    $logic->activate_plugin();
+    
+    $consumer = WordPressOpenID_Logic::getConsumer();
+    
+    $openid->response = $consumer->complete($_SESSION['oid_return_to']);
+    
+    switch( $openid->response->status ) {
+      case Auth_OpenID_CANCEL:
+        trigger_error('OpenID assertion cancelled', E_USER_ERROR );
+        break;
       
-    case Auth_OpenID_FAILURE:
-      trigger_error('OpenID assertion failed: ' . $openid->response->message, E_USER_ERROR);
-      break;
+      case Auth_OpenID_FAILURE:
+        trigger_error('OpenID assertion failed: ' . $openid->response->message, E_USER_ERROR);
+        break;
       
-    case Auth_OpenID_SUCCESS:
+      case Auth_OpenID_SUCCESS:
+        $_SESSION['openid_complete'] = true;
+        break;
+      
+      default:
+        trigger_error( "Sorry, the openid server $server_url did not validate your identity.", E_USER_ERROR );
+    }
+  
+  } else {
+    
+    include $GLOBALS['PATH']['library'] . 'openid.php';
+  
+    $openid = new SimpleOpenID;
+  
+    $openid->SetIdentity( $_SESSION['openid_url'] );
+  
+    $openid->SetApprovedURL( $request->url_for( 'openid_continue' ));
+  
+    $openid->SetTrustRoot( $request->base );
+  
+    $server_url = $_SESSION['openid_server_url'];
+  
+    $openid->SetOpenIDServer( $server_url );
+  
+    $valid = $openid->ValidateWithServer();
+    
+    if ($valid)
       $_SESSION['openid_complete'] = true;
-      break;
-      
-    default:
+    else
       trigger_error( "Sorry, the openid server $server_url did not validate your identity.", E_USER_ERROR );
+    
   }
+  
 
   complete_openid_authentication( $request );
   

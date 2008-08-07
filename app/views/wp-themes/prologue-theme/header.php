@@ -94,9 +94,6 @@ body {
 <script type="text/javascript" src="resource/jquery.flash.js"></script>
 <script type="text/javascript" src="resource/jquery.jqUploader.js"></script>
 
-
-
-<?php endif; ?>
 <script type="text/javascript">
 $(document).ready(function(){
 	$('#postfile').jqUploader({
@@ -110,6 +107,7 @@ $(document).ready(function(){
 	});
 });
 </script>
+
  <script type="text/javascript">
    
     
@@ -144,11 +142,15 @@ function checkMaxLength() {
 
 
     </script>
-    
-
-
   </head>
-<body onLoad="JavaScript:setMaxLength();">
+    <body onLoad="JavaScript:setMaxLength();">
+<?php else : ?>
+  </head>
+    <body>
+<?php endif; ?>
+
+
+
 
 <div id="wrapper">
 

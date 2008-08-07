@@ -10,7 +10,12 @@ class Membership extends Model {
     
     $this->int_field( 'entry_id' );
     $this->int_field( 'person_id' );
-        
+    
+    $this->bool_field( 'notify_get' );
+    $this->bool_field( 'notify_put' );
+    $this->bool_field( 'notify_post' );
+    $this->bool_field( 'notify_delete' );
+    
     $this->auto_field( 'id' );
     
     // relationships

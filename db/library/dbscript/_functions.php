@@ -1459,16 +1459,20 @@ function get_profile($id=NULL) {
   if (!($id == NULL)) {
     $Identity =& $db->get_table( 'identities' );
     return $Identity->find($id);
-  } else {
-    $id = get_person_id();
+  } elseif ( isset( $response->named_vars['profile'] )) {
+    $profile =& $response->named_vars['profile'];
+    if ($profile->id > 0)
+      return $profile;
   }
   
-  if (isset($response->named_vars['profile']))
-    return $response->named_vars['profile'];
+  $pid = get_person_id();
+  
+  if (!$pid)
+    return false;
   
   $Person =& $db->get_table( 'people' );
-
-  $p = $Person->find($id);
+  
+  $p = $Person->find($pid);
   
   if ($p) {
     $i = $p->FirstChild('identities');
@@ -1478,6 +1482,7 @@ function get_profile($id=NULL) {
   
   return false;
 }
+
 
 function get_profile_id() {
   

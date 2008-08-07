@@ -45,6 +45,7 @@ function omb_filter_posts( &$model, &$db ) {
   global $request;
   if (isset($request->params['byid']) && $request->resource == 'posts' && $model->table == 'posts'){
     $model->has_many( 'profile_id:subscriptions.subscribed' );
+    $model->set_groupby( 'id' );
     $where = array(
       'op'=>'OR',
       'profile_id'=>$request->params['byid'],
@@ -62,9 +63,7 @@ function omb_filter_posts( &$model, &$db ) {
 }
 
 
-
-
-// this is a filter to redirect to the post that was REPLIED TO
+// this is a filter to redirect to the post that was replied to
 
 after_filter( 'forward_after_reply', 'insert_from_post' );
 
@@ -87,15 +86,15 @@ after_filter( 'forward_after_review', 'insert_from_post' );
 
 function forward_after_review( &$model, &$rec ) {
   
-  global $request,$db;
-
+  global $db;
+  
   if (!($model->table == 'reviews'))
     return;
   
   $Entry =& $db->model('Entry');
   
   $e = $Entry->find($rec->target_id);
-
+  
   if ($e)
     redirect_to(array('resource'=>$e->resource,'id'=>$e->record_id));
   else
@@ -127,8 +126,35 @@ function wp_set_post_fields( &$model, &$rec ) {
   if ( !(isset($_POST['posttext'])) || !(isset($_POST['tags'])) )
     return;
   
+  $tinyurl = '';
+  
+  if (isset( $_POST['link']['href'] )) {
+    $href = trim($_POST['link']['href']);
+    $tinyapi = 'http://tinyurl.com/api-create.php?url=' . $href;
+    $result = false;
+    if (!empty($href)) {
+      
+      //$ch = curl_init($tinyapi);
+      //$result = curl_exec($ch);
+      //curl_close($ch);
+      
+      $tinyUrl = @file($tinyapi);
+      if (isset($tinyUrl[0]))
+        $result = $tinyUrl[0];
+      
+      //$tinyHook = @fopen('http://tinyurl.com/api-create.php?url=$yourUrl,'r');
+      //if ($tinyHook) {
+      //    $tinyurl = fread($tinyHook, 1024);
+      //    fclose($tinyHook);
+      //}
+      
+      if ($result)
+        $tinyurl = ' '.trim($result);
+    }
+  }
+  
   if ( isset( $_POST['posttext'] ))
-    $request->set_param( array( 'post', 'title' ), $_POST['posttext'] );
+    $request->set_param( array( 'post', 'title' ), $_POST['posttext'].$tinyurl );
   
   if ( isset( $_POST['profile_id'] ))
     $request->set_param( array( 'post', 'profile_id' ), $_POST['profile_id'] );
@@ -172,7 +198,7 @@ after_filter('do_ajaxy_fileupload','routematch');
 function do_ajaxy_fileupload(&$request,&$route) {
   if (!isset($_FILES['Filedata']['name']))
     return;
-  if (!(is_writable('cache')))
+  if (!is_writable('cache'))
     exit;
   global $db;
   $Upload =& $db->model('Upload');
@@ -722,7 +748,7 @@ function oauth_omb_finish_subscribe( &$vars ) {
     $sub = $Subscription->base();
     $sub->set_value( 'subscriber', $i->id );
     $sub->set_value( 'subscribed', $_SESSION['listenee_id'] );
-    $sub->save();
+    $sub->save_changes();
     $p = $i->FirstChild('people');
     $sub->set_etag($p->id);
   
@@ -776,10 +802,12 @@ function request_token( &$vars ) {
     'wp-oauth'
   ));
   
-  $consumer_result = $db->get_result("SELECT consumer_key FROM oauth_consumers WHERE consumer_key like '".$_POST['oauth_consumer_key']."'");
+  $consumerkey = $db->escape_string(urldecode($_POST['oauth_consumer_key']));
+  
+  $consumer_result = $db->get_result("SELECT consumer_key FROM oauth_consumers WHERE consumer_key = '$consumerkey'");
   
   if (!$db->num_rows($consumer_result)>0)
-    $result = $db->get_result("INSERT INTO oauth_consumers (consumer_key, secret, description) VALUES ('".$_POST['oauth_consumer_key']."', '', 'Unidentified Consumer')");
+    $result = $db->get_result("INSERT INTO oauth_consumers (consumer_key, secret, description) VALUES ('$consumerkey', '', 'Unidentified Consumer')");
   
   $store = new OAuthWordpressStore();
   $server = new OAuthServer($store);

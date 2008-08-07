@@ -50,13 +50,11 @@ function index( &$vars ) {
   $atomfeed = $request->feed_url();
   return vars(
     array(
-      
       &$Category,
       &$profile,
       &$atomfeed,
       &$collection,
       &$theme
-      
     ),
     get_defined_vars()
   );

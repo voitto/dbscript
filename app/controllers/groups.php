@@ -40,21 +40,39 @@ function put( &$vars ) {
       $i->set_value( 'email_value', $a );
       $i->set_value( 'given_name', '' );
       $i->set_value( 'label', 'profile 1' );
-      $i->set_value( 'token', dechex(crc32($p->id.microtime())));
+      $i->set_value( 'token', make_token($p->id));
       $i->set_value( 'person_id', $p->id );
       $i->save_changes();
+      do_invite_email($a);
     }
     if ($g && is_email($a) && $p) {
+      
       $m = $Membership->base();
       $m->set_value( 'group_id', $g->id );
       $m->set_value( 'person_id', $p->id );
       $m->save_changes();
+      
     }
   }
-  
+  exit;
   header( 'Status: 200 OK' );
   redirect_to( 'groups' );
 }
+
+
+function do_invite_email($addr) {
+  
+  // addr is_email
+  // email/identity did not exist before the group put/post, do notify
+  
+  $html = false;
+  $text = 'Content was updated at the following location:'."\r\n\r\n".$addr."\r\n\r\n";
+  $subject = "You are invited to the OpenMicroBlogger party";
+  echo "SEND TO $addr";
+  //send_email( $a, $subject, $text, environment('email_from'), environment('email_name'), $html );
+  
+}
+
 
 function post( &$vars ) {
   
@@ -67,6 +85,8 @@ function post( &$vars ) {
   
   foreach ( $fields['groups'] as $field=>$type )
     $g->set_value( $field, $request->params['group'][$field] );
+  
+  $g->set_etag(get_person_id());
   
   $g->save_changes();
   
@@ -87,9 +107,10 @@ function post( &$vars ) {
       $i->set_value( 'email_value', $a );
       $i->set_value( 'given_name', '' );
       $i->set_value( 'label', 'profile 1' );
-      $i->set_value( 'token', dechex(crc32($p->id.microtime())));
+      $i->set_value( 'token', make_token($p->id));
       $i->set_value( 'person_id', $p->id );
       $i->save_changes();
+      do_invite_email($a);
     }
     if (is_email($a) && $p) {
       $m = $Membership->base();
@@ -98,7 +119,7 @@ function post( &$vars ) {
       $m->save_changes();
     }
   }
-  
+  exit;
   header( 'Status: 201 Created' );
   
   redirect_to( 'groups' );
@@ -114,13 +135,14 @@ function delete( &$vars ) {
 
 function index( &$vars ) {
   extract( $vars );
+  $theme = '';
   $atomfeed = $request->feed_url();
   return vars(
     array(
       &$profile,
       &$atomfeed,
-      &$collection
-      
+      &$collection,
+      &$theme
     ),
     get_defined_vars()
   );
@@ -187,13 +209,19 @@ function _edit( &$vars ) {
 
   $Entry = $Member->FirstChild( "entries" );
 
+  $subscribers = "";
+  $arr = resource_group_members($Member->id);
+  foreach ( $arr as $member_ident ) {
+    $subscribers .= htmlentities($member_ident->email_value)."\n";
+  }
 
   return vars(
     array(
 
       // return vars to the _edit partial
       &$Member,
-      &$Entry
+      &$Entry,
+      &$subscribers
 
     ),
     get_defined_vars()

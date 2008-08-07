@@ -724,6 +724,9 @@ class PostgreSQL extends Database {
     if (!(isset($model->limit)))
       $model->limit = 20;
 
+    if (isset($model->groupby))
+      $sql .= " GROUP BY " . $model->groupby . " ";
+
     $sql .= " ORDER BY " . $model->orderby . " ";
 
     $sql .= $model->order . $this->query_limit($model->limit,$model->offset);
