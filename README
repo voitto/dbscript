@@ -1,6 +1,8 @@
-edit the app/config.yml with your database settings
+edit the app/config/config.yml with your database settings
 
-dbscript will create the tables as they are needed
+create a /cache folder with permissions for the Web server process to create files
+
+dbscript will create the database tables as they are needed
 
 and you are done!
 
