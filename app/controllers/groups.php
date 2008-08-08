@@ -40,36 +40,54 @@ function put( &$vars ) {
       $i->set_value( 'email_value', $a );
       $i->set_value( 'given_name', '' );
       $i->set_value( 'label', 'profile 1' );
-      $i->set_value( 'token', make_token($p->id));
+      $token = make_token($p->id);
+      $i->set_value( 'token', $token);
       $i->set_value( 'person_id', $p->id );
       $i->save_changes();
-      do_invite_email($a);
+      $i->set_etag($p->id);
+      do_invite_email($a,$token);
     }
     if ($g && is_email($a) && $p) {
-      
       $m = $Membership->base();
       $m->set_value( 'group_id', $g->id );
       $m->set_value( 'person_id', $p->id );
       $m->save_changes();
-      
     }
   }
-  exit;
+  
   header( 'Status: 200 OK' );
   redirect_to( 'groups' );
 }
 
 
-function do_invite_email($addr) {
   
-  // addr is_email
-  // email/identity did not exist before the group put/post, do notify
+function do_invite_email($addr,$token) {
+  
+  global $request;
+  $link = $request->url_for(array('resource'=>'posts','id'=>86,'ident'=>$token));
+  
+  
+  $subject = "OpenMicroBlogger.com invites you to our private beta";
+  
+  $email = "\n\nMegapump, Inc. launches OpenMicroBlogger, a Microblogging service and download"."\n\n";
+  
+  $email .= "August 8th, 2008\n\n";
+  
+  $email .= "Portland, Oregon -- Megapump, Inc. today launched its beta versions of OpenMicroBlogger.com and OpenMicroBlogger.org, software which will allow users to to control their own microblogging through their personal Web sites while continuing to network with other sites.\n\n";
+  
+  $email .= "The beta releases feature a brand new implementation of the OpenMicroBlogging protocol, which makes it easy for users of different sites to exchange update messages. The OpenMicroblogger service is interoperable with the recently introduced Identi.ca and Laconi.ca, from Quebec-based Control Yourself, Inc., and simplifies the implementation of those protocols.\n\n";
+  
+  $email .= "OpenMicroBlogger distinguishes itself with the option to attach links, videos, movies and songs. The new software can run on older PHP installations, and it features a simplified installation procedure.\n\n";
+  
+  $email .= "Megapump, Inc. will continue to add features to the service -- XMPP, SMS and Twitter integration will be offered later this year.\n\n";
+  
+  $email .= "You are invited to the private beta, please click the following link to claim your invite. Thanks for your feedback!\n\n";
+  
+  $email .= "Click to redeem your invitation --> ".$link."\n\n";
   
   $html = false;
-  $text = 'Content was updated at the following location:'."\r\n\r\n".$addr."\r\n\r\n";
-  $subject = "You are invited to the OpenMicroBlogger party";
-  echo "SEND TO $addr";
-  //send_email( $a, $subject, $text, environment('email_from'), environment('email_name'), $html );
+  
+  send_email( $addr, $subject, $email, environment('email_from'), environment('email_name'), $html );
   
 }
 
@@ -86,9 +104,9 @@ function post( &$vars ) {
   foreach ( $fields['groups'] as $field=>$type )
     $g->set_value( $field, $request->params['group'][$field] );
   
-  $g->set_etag(get_person_id());
-  
   $g->save_changes();
+
+  $g->set_etag(get_person_id());
   
   $subscribers = explode( "\n", $request->subscribers );
   
@@ -107,10 +125,12 @@ function post( &$vars ) {
       $i->set_value( 'email_value', $a );
       $i->set_value( 'given_name', '' );
       $i->set_value( 'label', 'profile 1' );
-      $i->set_value( 'token', make_token($p->id));
+      $token = make_token($p->id);
+      $i->set_value( 'token', $token);
       $i->set_value( 'person_id', $p->id );
       $i->save_changes();
-      do_invite_email($a);
+      $i->set_etag($p->id);
+      do_invite_email($a,$token);
     }
     if (is_email($a) && $p) {
       $m = $Membership->base();
@@ -119,7 +139,7 @@ function post( &$vars ) {
       $m->save_changes();
     }
   }
-  exit;
+  
   header( 'Status: 201 Created' );
   
   redirect_to( 'groups' );
@@ -128,6 +148,12 @@ function post( &$vars ) {
 
 function delete( &$vars ) {
   extract( $vars );
+  $e = $Entry->find_by('etag',$request->etag);
+  if ($e) {
+    $g = $Group->find($e->record_id);
+    if ($g)
+      $result = $db->get_result( "DELETE FROM memberships WHERE group_id = ".$g->id );
+  }
   $Group->delete_from_post( $request );
   header( 'Status: 200 OK' );
   redirect_to( 'groups' );
@@ -196,6 +222,37 @@ function _entry( &$vars ) {
 }
 
 
+
+
+function _remove( &$vars ) {
+
+  // bring controller vars into scope
+  extract( $vars );
+
+  $Member = $Group->find( $request->id );
+  
+  $Member->set_etag();
+
+  if (!$Member)
+    trigger_error( "Sorry, I could not find that entry in groups.", E_USER_ERROR );
+
+  $Membership = $Member->FirstChild( "memberships" );
+  
+  $Entry = $Member->FirstChild( "entries" );
+
+  return vars(
+    array(
+
+      // return vars to the _entry partial
+      &$Member,
+      &$Membership,
+      &$Entry
+
+    ),
+    get_defined_vars()
+  );
+
+}
 
 function _edit( &$vars ) {
 

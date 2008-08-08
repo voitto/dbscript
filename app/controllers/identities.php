@@ -105,6 +105,10 @@ function put( &$vars ) {
   extract( $vars );
   $request->params['identity']['nickname'] = strtolower($request->params['identity']['nickname']);
   $Identity->validates_uniqueness_of( 'nickname' );
+  
+  if (strpos($request->params['identity']['url'], 'http') === false)
+    $request->params['identity']['url'] = 'http://'.$request->params['identity']['url'];
+  
   $resource->update_from_post( $request );
   $rec = $Identity->find($request->id);
   $rec->set_value( 'avatar',  $request->url_for(array('resource'=>"_".$rec->id)) . ".jpg" );

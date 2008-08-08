@@ -145,8 +145,8 @@ function begin_openid_authentication( &$request ) {
       'email',
       'fullname'
     ));
-    if ($sreg_request)
-      $auth_request->addExtension($sreg_request);
+    
+    $auth_request->addExtension($sreg_request);
     
     $_SESSION['oid_return_to'] = $return_to;
   
@@ -214,8 +214,8 @@ function complete_openid_authentication( &$request ) {
 
       $i = $Identity->find_by( 'url', $openid );
       
-      if (!$i && isset($_SESSION['openid_email']))
-        $i = $Identity->find_by( 'email_value', $_SESSION['openid_email'] );
+      //if (!$i && isset($_SESSION['openid_email']))
+      //  $i = $Identity->find_by( 'email_value', $_SESSION['openid_email'] );
       
       // not looking very secure this stuff
       
@@ -457,6 +457,10 @@ function openid_submit( &$vars ) {
 function email_submit( &$vars ) {
   extract($vars);
   global $request;
+  
+  unset_cookie();
+  $_SESSION['openid_complete'] = false;
+  
   $Identity =& $db->get_table( 'identities' );
   $i = $Identity->find_by( 'email_value', $request->email );
   $_SESSION['openid_email'] = $request->email;

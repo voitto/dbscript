@@ -39,6 +39,14 @@ $request->connect(
 );
 
 
+$request->connect(
+  ':resource/forid/:forid/:page',
+  array(
+    'requirements' => array ( '[A-Za-z0-9_.]+', '[0-9]+', '[0-9]+' )
+  )
+);
+
+
 before_filter( 'omb_filter_posts', 'get_query' );
 
 function omb_filter_posts( &$model, &$db ) {
@@ -52,6 +60,16 @@ function omb_filter_posts( &$model, &$db ) {
       'subscriptions.subscriber'=>$request->params['byid']
     );
     $model->set_param( 'find_by', $where );
+  } elseif (isset($request->params['forid']) && $request->resource == 'posts' && $model->table == 'posts') {
+    trigger_error('The replies tab is to be implemented here', E_USER_ERROR);
+    //$model->has_many( 'profile_id:subscriptions.subscribed' );
+    //$model->set_groupby( 'id' );
+    //$where = array(
+    //  'op'=>'OR',
+    //  'profile_id'=>$request->params['byid'],
+    //  'subscriptions.subscriber'=>$request->params['byid']
+    //);
+    //$model->set_param( 'find_by', $where );
   } elseif ($model->table == 'posts' && $request->resource == 'posts' && $request->id == 0) {
     $where = array(
       'local'=>1
@@ -59,6 +77,20 @@ function omb_filter_posts( &$model, &$db ) {
     $model->set_param( 'find_by', $where );
   } elseif ($model->table == 'posts' && $request->resource == 'posts') {
     // meh
+  }
+}
+
+
+// normally a token/invite is for a private resource,
+// which get redirected to _email template
+// this is a hook to catch tokens in public resource URIs
+
+before_filter('catch_invite_token','get');
+
+function catch_invite_token(&$request,&$route) {
+  if (isset($request->params['ident'])) {
+    render( 'action', 'email' );
+    exit;
   }
 }
 

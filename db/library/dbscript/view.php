@@ -55,7 +55,8 @@ class View {
     else
       $this->named_vars['resource'] = false;
     $this->controller = $request->controller;
-    // check for a controller file in db/controllers/[resource].php
+    
+    // check for a controller file in controllers/[resource].php
     if ( isset( $request->resource )) {
       $cont = controller_path() . $request->resource . ".php";
       if ( file_exists( $cont ))
