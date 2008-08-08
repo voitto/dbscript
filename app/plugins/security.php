@@ -209,15 +209,16 @@ function complete_openid_authentication( &$request ) {
       $Person =& $db->get_table( 'people' );
       
       $openid = $_SESSION['openid_url'];
+      
       if (!strstr($openid,'http'))
         $openid = 'http://' . $openid;
 
       $i = $Identity->find_by( 'url', $openid );
       
-      //if (!$i && isset($_SESSION['openid_email']))
-      //  $i = $Identity->find_by( 'email_value', $_SESSION['openid_email'] );
-      
-      // not looking very secure this stuff
+      // OpenID auth complete, URL not exists
+      // e-mail could be set though
+      if (!$i && isset($_SESSION['openid_email']))
+        $i = $Identity->find_by( 'email_value', $_SESSION['openid_email'] );
       
       //if (isset($_GET['openid_sreg_email']))
       //  $i = $Identity->find_by( 'email_value', $_GET['openid_sreg_email'] );
@@ -235,35 +236,36 @@ function complete_openid_authentication( &$request ) {
         $i->set_value( 'label', 'profile 1' );
         if (isset($_SESSION['openid_email']))
           $i->set_value( 'email_value', $_SESSION['openid_email'] );
-        
-        if (!isset($i->url) || empty($i->url) || strstr( $i->url, "@" ))
-          $i->set_value( 'url', $openid );
           
-        // put SREG data in empty identity fields
-        foreach($openid_to_identity as $k=>$v )
-          if (!in_array($k,array('openid_sreg_nickname')) && isset($_GET['openid_sreg_'.$k]))
-            if (empty($i->$v))
-              $i->set_value( $v, urldecode($_GET['openid_sreg_'.$k]) );
-
-        if (isset($_GET['openid_sreg_nickname']) && ( !isset($i->nickname) || empty($i->nickname) )) {
+      }
+      
+      if (empty($i->url) || strstr( $i->url, "@" )) {
+        
+        $i->set_value( 'url', $openid );
+        
+        if (isset($_GET['openid_sreg_nickname']) && empty($i->nickname) ) {
           $nick = strtolower(urldecode($_GET['openid_sreg_nickname']));
           // set the nickname if it isn't alraedy taken and if it looks like a valid username
           if ($Identity->is_unique_value( $nick, 'nickname' ) && ereg("^([a-zA-Z0-9]+)$", $nick))
             $i->set_value( 'nickname', $nick );
         }
-                  
-        if (isset($_GET['openid_sreg_fullname'])) {
+        
+        // put SREG data in empty identity fields
+        foreach($openid_to_identity as $k=>$v )
+          if (!in_array($k,array('openid_sreg_nickname')) && isset($_GET['openid_sreg_'.$k]))
+            if (empty($i->$v))
+              $i->set_value( $v, urldecode($_GET['openid_sreg_'.$k]) );
+            
+        if (isset($_GET['openid_sreg_fullname']) && empty($i->given_name)) {
           $names = explode(' ',$_GET['openid_sreg_fullname']);
-          if (strlen($names[0]) > 0)
+          if (strlen($names[0]) > 0 && empty($i->given_name))
             $i->set_value( 'given_name', $names[0] );
-          if (isset($names[2])) {
+          if (isset($names[2]) && empty($i->family_name)) {
             $i->set_value( 'family_name', $names[2] );
-          } elseif (isset($names[1])) {
+          } elseif (isset($names[1]) && empty($i->family_name)) {
             $i->set_value( 'family_name', $names[1] );
           }
-          
-          $i->set_value( 'fullname', urldecode($_GET['openid_sreg_fullname']));
-          
+        
         }
         
         $i->save_changes();
@@ -271,10 +273,13 @@ function complete_openid_authentication( &$request ) {
         $i->set_etag( $p->id );
         
       }
+      
     }
     if ( isset( $p->id ) && $p->id != 0) {
       // person id is valid
+      // login complete
       set_cookie( $p->id );
+      
       if (!(empty($_SESSION['requested_url'])))
         redirect_to( $_SESSION['requested_url'] );
       else
@@ -451,7 +456,13 @@ function password_submit( &$vars ) {
 }
 
 function openid_submit( &$vars ) {
+  
+  unset_cookie();
+  unset($_SESSION['openid_complete']);
+  unset($_SESSION['openid_url']);
+  unset($_SESSION['openid_email']);
   authenticate_with_openid();
+
 }
 
 function email_submit( &$vars ) {
@@ -459,10 +470,14 @@ function email_submit( &$vars ) {
   global $request;
   
   unset_cookie();
-  $_SESSION['openid_complete'] = false;
+  unset($_SESSION['openid_complete']);
+  unset($_SESSION['openid_url']);
+  unset($_SESSION['openid_email']);
   
   $Identity =& $db->get_table( 'identities' );
+  
   $i = $Identity->find_by( 'email_value', $request->email );
+  
   $_SESSION['openid_email'] = $request->email;
   if ( $i && !(strstr( $i->url, "@" )) && !empty($i->url)) {
     $request->openid_url = $i->url;

@@ -111,7 +111,13 @@ function put( &$vars ) {
   
   $resource->update_from_post( $request );
   $rec = $Identity->find($request->id);
-  $rec->set_value( 'avatar',  $request->url_for(array('resource'=>"_".$rec->id)) . ".jpg" );
+  
+  $sql = "SELECT photo FROM identities WHERE id = ".$request->id;
+  $result = $db->get_result($sql);
+  if ($blobval = $db->result_value($result,0,"photo"))
+    $rec->set_value( 'avatar',  $request->url_for(array('resource'=>"_".$rec->id)) . ".jpg" );
+  else
+    $rec->set_value( 'avatar',  '' );
   $rec->set_value( 'profile', $request->url_for(array('resource'=>"_".$rec->id)));
   $rec->save_changes();
   header_status( '200 OK' );

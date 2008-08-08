@@ -655,8 +655,8 @@ function oauth_authorize( &$vars ) {
           <ul style="padding:0px;">
         <?php
           $services = get_option('oauth_services');
-          foreach($services as $k => $v)
-            echo '<li><input type="checkbox" checked="checked" name="services['.htmlentities($k).']" /> '.$k.'</li>';
+          //foreach($services as $k => $v)
+          //  echo '<li><input type="checkbox" checked="checked" name="services['.htmlentities($k).']" /> '.$k.'</li>';
         ?>
           </ul>
           <br />

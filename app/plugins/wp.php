@@ -623,7 +623,7 @@ function get_header() {
         'action'=>'edit'
       ));
 
-    if (($request->uri != $edit_uri) && (!isset($p->nickname) || !isset($p->avatar))) {
+    if (($request->uri != $edit_uri) && (!isset($p->nickname) || empty($p->avatar))) {
       $_SESSION['message'] = "Photo and Nickname are required.";
       redirect_to($edit_uri);
     }

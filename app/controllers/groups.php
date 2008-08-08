@@ -66,24 +66,9 @@ function do_invite_email($addr,$token) {
   global $request;
   $link = $request->url_for(array('resource'=>'posts','id'=>86,'ident'=>$token));
   
+  $subject = '';
   
-  $subject = "OpenMicroBlogger.com invites you to our private beta";
-  
-  $email = "\n\nMegapump, Inc. launches OpenMicroBlogger, a Microblogging service and download"."\n\n";
-  
-  $email .= "August 8th, 2008\n\n";
-  
-  $email .= "Portland, Oregon -- Megapump, Inc. today launched its beta versions of OpenMicroBlogger.com and OpenMicroBlogger.org, software which will allow users to to control their own microblogging through their personal Web sites while continuing to network with other sites.\n\n";
-  
-  $email .= "The beta releases feature a brand new implementation of the OpenMicroBlogging protocol, which makes it easy for users of different sites to exchange update messages. The OpenMicroblogger service is interoperable with the recently introduced Identi.ca and Laconi.ca, from Quebec-based Control Yourself, Inc., and simplifies the implementation of those protocols.\n\n";
-  
-  $email .= "OpenMicroBlogger distinguishes itself with the option to attach links, videos, movies and songs. The new software can run on older PHP installations, and it features a simplified installation procedure.\n\n";
-  
-  $email .= "Megapump, Inc. will continue to add features to the service -- XMPP, SMS and Twitter integration will be offered later this year.\n\n";
-  
-  $email .= "You are invited to the private beta, please click the following link to claim your invite. Thanks for your feedback!\n\n";
-  
-  $email .= "Click to redeem your invitation --> ".$link."\n\n";
+  $email = '';
   
   $html = false;
   
