@@ -2,7 +2,7 @@
    
   /** 
    * dbscript -- restful openid framework
-   * @version 0.5.0 -- 8-August-2008
+   * @version 0.5.0 -- 12-August-2008
    * @author Brian Hendrickson <brian@dbscript.net>
    * @link http://dbscript.net/
    * @copyright Copyright 2008 Brian Hendrickson
@@ -43,7 +43,7 @@
    Version 0.3.0, 10-Jun-2007
      models for Group, Membership, Identity
    
-   Version 0.5.0, 8-August-2008
+   Version 0.5.0, 12-August-2008
      new templates: vcard, hcard, ics, rdf, json, atom
    
    */
@@ -62,7 +62,7 @@ global $variants,$request,$loader,$db,$logic;
   // set path to db directory
 if (is_dir('db'))
   $app = 'db' . DIRECTORY_SEPARATOR;
-elseif (is_dir('site'))
+elseif (is_dir('site' . DIRECTORY_SEPARATOR . 'db' . DIRECTORY_SEPARATOR))
   $app = 'site' . DIRECTORY_SEPARATOR . 'db' . DIRECTORY_SEPARATOR;
 else
   trigger_error( 'path to dbscript not found', E_USER_ERROR );
@@ -159,14 +159,14 @@ include $GLOBALS['PATH']['library'] . 'yaml.php';
 
 $loader = new Horde_Yaml();
 
-if ( file_exists( $app . 'config.yml' ) )
+if ( file_exists( $app . 'config.yml' ) ) {
   extract($loader->load(file_get_contents($app.'config.yml')));
-else
-  trigger_error( 'unable to read dbscript configuration, sorry', E_USER_ERROR );
+  extract( $$env['enable_db'] );
+} else {
+  $env = array('app_folder'=>'app');
+}
 
-extract( $$env['enable_db'] );
-
-  // if app folder exists, re-config
+// if app folder exists, re-config for the app
 if (is_dir( $env['app_folder'] )) {
   $app = $env['app_folder'] . DIRECTORY_SEPARATOR;
   $GLOBALS['PATH']['app'] = $app;
@@ -179,7 +179,6 @@ if (is_dir( $env['app_folder'] )) {
   if (is_dir( $app . 'plugins' . DIRECTORY_SEPARATOR ))
     $GLOBALS['PATH']['plugins'] = $app . 'plugins' . DIRECTORY_SEPARATOR;
 }
-
 
 if ($env['debug_enabled']) {
   ini_set('display_errors','1');

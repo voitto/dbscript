@@ -40,7 +40,7 @@ env:
   
   site_title: 
   
-  theme:
+  theme: 
   
   remote_sources:
     dbscript: dbscript.net/?apps
@@ -57,6 +57,11 @@ env:
     - sessions
     - validation
     - security
+    - ping
+    - omb
+    - omb_notice
+    - email_notice
+    - wp
   
   profile:
     - postcode
@@ -75,7 +80,7 @@ env:
   email_user: 
   email_pass: 
   
-  openid_server: 
+  openid_server: https://e-cred.org/server
   
   xrds_services:
     oauth:

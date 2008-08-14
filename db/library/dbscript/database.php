@@ -2,7 +2,7 @@
 
   /** 
    * dbscript -- restful openid framework
-   * @version 0.5.0 -- 8-August-2008
+   * @version 0.5.0 -- 12-August-2008
    * @author Brian Hendrickson <brian@dbscript.net>
    * @link http://dbscript.net/
    * @copyright Copyright 2008 Brian Hendrickson
@@ -31,7 +31,7 @@
    * @package dbscript
    * @author Brian Hendrickson <brian@dbscript.net>
    * @access public
-   * @version 0.5.0 -- 8-August-2008
+   * @version 0.5.0 -- 12-August-2008
    */
 
 class Database {
@@ -571,11 +571,11 @@ class Database {
     $s3 = new S3( environment('awsAccessKey'), environment('awsSecretKey') );
     if (!$s3)
       trigger_error( 'Sorry, there was a problem connecting to Amazon Web Services', E_USER_ERROR );
-    $result = $s3->putBucket( environment('awsBucket'), S3::ACL_PUBLIC_READ );
+    $result = $s3->putBucket( environment('awsBucket'), 'public-read' );
     if (!$result)
       trigger_error( 'Sorry, there was a problem creating the bucket '.environment('awsBucket').' at Amazon Web Services', E_USER_ERROR );
     if (file_exists($this->aws_upload[1])) {
-      if (!($s3->putObjectFile( $this->aws_upload[1] , environment('awsBucket'), $file, S3::ACL_PUBLIC_READ )))
+      if (!($s3->putObjectFile( $this->aws_upload[1] , environment('awsBucket'), $file, 'public-read' )))
         trigger_error( 'Sorry, there was a problem uploading the file to Amazon Web Services', E_USER_ERROR );
       unlink($this->aws_upload[1]);
     }

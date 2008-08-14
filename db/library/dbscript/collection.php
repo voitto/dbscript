@@ -2,7 +2,7 @@
 
   /**
    * dbscript -- restful openid framework
-   * @version 0.5.0 -- 8-August-2008
+   * @version 0.5.0 -- 12-August-2008
    * @author Brian Hendrickson <brian@dbscript.net>
    * @link http://dbscript.net/
    * @copyright Copyright 2008 Brian Hendrickson
@@ -19,7 +19,7 @@
    * @package dbscript
    * @author Brian Hendrickson <brian@dbscript.net>
    * @access public
-   * @version 0.5.0 -- 8-August-2008
+   * @version 0.5.0 -- 12-August-2008
    */
 
 class Collection extends GenericIterator {
@@ -101,7 +101,7 @@ class Collection extends GenericIterator {
     else
       $this->per_page = 20;
 
-    if (isset($request->params['page']))
+    if (isset($request->params['page']) && !is_array($request->params['page']))
       $table->set_offset( ($this->per_page * $request->params['page']) - $this->per_page );
 
     if ( !$request->id )
