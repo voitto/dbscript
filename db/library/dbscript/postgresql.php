@@ -557,7 +557,7 @@ class PostgreSQL extends Database {
 
     $result = $this->get_result("CREATE TABLE oauth_consumers (consumer_key CHAR(255) PRIMARY KEY, secret CHAR(40), description CHAR(40))");
 
-    $result = $this->get_result("CREATE TABLE oauth_tokens (consumer_key CHAR(40), token CHAR(40), secret CHAR(40), token_type CHAR(7), nonce CHAR(40), user_id INT DEFAULT 0, expires INT DEFAULT 0)");
+    $result = $this->get_result("CREATE TABLE oauth_tokens (consumer_key CHAR(255), token CHAR(40), secret CHAR(40), token_type CHAR(7), nonce CHAR(40), user_id INT DEFAULT 0, expires INT DEFAULT 0)");
 
     $result = $this->get_result("INSERT INTO oauth_consumers (consumer_key, secret, description) VALUES ('DUMMYKEY', '', 'Unidentified Consumer')");
 //;

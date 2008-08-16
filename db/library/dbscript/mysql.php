@@ -137,7 +137,7 @@ $result = $this->get_result("CREATE TABLE openid_nonces (\n".
 //CREATE TABLE oauth_consumers (consumer_key CHAR(255) PRIMARY KEY, secret CHAR(40), description CHAR(40));
     $result = $this->get_result("CREATE TABLE IF NOT EXISTS oauth_consumers (consumer_key CHAR(255) PRIMARY KEY, secret CHAR(40), description CHAR(40))");
 //CREATE TABLE oauth_tokens (consumer_key CHAR(40), token CHAR(40), secret CHAR(40), token_type CHAR(7), nonce CHAR(40), user_id INT DEFAULT 0, expires INT DEFAULT 0);
-    $result = $this->get_result("CREATE TABLE IF NOT EXISTS oauth_tokens (consumer_key CHAR(40), token CHAR(40), secret CHAR(40), token_type CHAR(7), nonce CHAR(40), user_id TINYINT DEFAULT 0, expires INT DEFAULT 0)");
+    $result = $this->get_result("CREATE TABLE IF NOT EXISTS oauth_tokens (consumer_key CHAR(255), token CHAR(40), secret CHAR(40), token_type CHAR(7), nonce CHAR(40), user_id TINYINT DEFAULT 0, expires INT DEFAULT 0)");
 //
     $result = $this->get_result("INSERT INTO oauth_consumers (consumer_key, secret, description) VALUES ('DUMMYKEY', '', 'Unidentified Consumer')");
 //CREATE TABLE openid_nonces ( server_url VARCHAR(2047), timestamp INT, salt CHAR(40) );
