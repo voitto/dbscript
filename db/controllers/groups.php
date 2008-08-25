@@ -146,7 +146,7 @@ function delete( &$vars ) {
 
 function index( &$vars ) {
   extract( $vars );
-  $theme = '';
+  $theme = environment('theme');
   $atomfeed = $request->feed_url();
   return vars(
     array(

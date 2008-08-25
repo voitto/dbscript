@@ -303,7 +303,11 @@ class PostgreSQL extends Database {
     if ($datatype == 'blob' && strlen($rec->attributes[$modified_field]) > 0) {
       $coll = environment('collection_cache');
       if (isset($coll[$request->resource]) && $coll[$request->resource]['location'] == 'aws') {
-        $this->aws_upload = array($modified_field,$rec->attributes[$modified_field]);
+        $this->file_upload = array($modified_field,$rec->attributes[$modified_field]);
+        $rec->set_value($modified_field,'');
+      } elseif (isset($coll[$request->resource]) && $coll[$request->resource]['location'] == 'uploads') {
+        $this->file_upload = $rec->attributes[$modified_field];
+        $rec->set_value($modified_field,'');
       } else {
         $oid = $this->large_object_create($rec->table,$rec->attributes[$modified_field]);
         if ($oid > 0)
@@ -336,9 +340,13 @@ class PostgreSQL extends Database {
       global $request;
       $coll = environment('collection_cache');
       if (isset($coll[$request->resource]) && $coll[$request->resource]['location'] == 'aws') {
-        $this->aws_upload = array($modified_field,$rec->attributes[$modified_field]);
+        $this->file_upload = array($modified_field,$rec->attributes[$modified_field]);
         $this->aws_delfile($rec,$rec->id);
         $this->aws_putfile($rec,$rec->id);
+        $rec->set_value($modified_field,'');
+      } elseif (isset($coll[$request->resource]) && $coll[$request->resource]['location'] == 'uploads') {
+        update_uploadsfile($rec->table,$rec->id,$rec->attributes[$modified_field]);
+        $rec->set_value($modified_field,'');
       } else {
         unlink_cachefile($rec->table,$rec->id,$coll);
         $oid_result = $this->get_result("select ".$modified_field." from ".$rec->table." where ".$rec->primary_key." = '".$rec->attributes[$rec->primary_key]."'");
@@ -356,8 +364,10 @@ class PostgreSQL extends Database {
   }
   function post_insert( &$rec, &$result ) {
     trigger_before( 'post_insert', $this, $this );
-    if (is_array($this->aws_upload))
+    if (is_array($this->file_upload))
       $this->aws_putfile($rec,$rec->id);
+    elseif (!empty($this->file_upload))
+      update_uploadsfile($rec->table,$rec->id,$this->file_upload);
     if (!$result) { trigger_error("Sorry, the record could not be saved due to a database error.", E_USER_ERROR ); }
   }
   function affected_rows(&$result) {

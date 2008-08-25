@@ -330,7 +330,11 @@ $result = $this->get_result("CREATE TABLE openid_associations (\n".
     if ($datatype == 'blob' && !(empty($req->params[strtolower(classify($rec->table))][$modified_field]))) {
       $coll = environment('collection_cache');
       if (isset($coll[$request->resource]) && $coll[$request->resource]['location'] == 'aws') {
-        $this->aws_upload = array($modified_field,$rec->attributes[$modified_field]);
+        $this->file_upload = array($modified_field,$rec->attributes[$modified_field]);
+        $rec->set_value($modified_field,'');
+      } elseif (isset($coll[$request->resource]) && $coll[$request->resource]['location'] == 'uploads') {
+        $this->file_upload = $rec->attributes[$modified_field];
+        $rec->set_value($modified_field,'');
       } else {
         $rec->attributes[$modified_field] =& $this->large_object_create( $rec->table, $rec->attributes[$modified_field] );
       }
@@ -367,9 +371,13 @@ $result = $this->get_result("CREATE TABLE openid_associations (\n".
       if ( strlen( $rec->attributes[$modified_field] ) > 0 ) {
         $coll = environment('collection_cache');
         if (isset($coll[$request->resource]) && $coll[$request->resource]['location'] == 'aws') {
-          $this->aws_upload = array($modified_field,$rec->attributes[$modified_field]);
+          $this->file_upload = array($modified_field,$rec->attributes[$modified_field]);
           $this->aws_delfile($rec,$rec->id);
           $this->aws_putfile($rec,$rec->id);
+          $rec->set_value($modified_field,'');
+        } elseif (isset($coll[$request->resource]) && $coll[$request->resource]['location'] == 'uploads') {
+          update_uploadsfile($rec->table,$rec->id,$rec->attributes[$modified_field]);
+          $rec->set_value($modified_field,'');
         } else {
           unlink_cachefile($rec->table,$rec->id,$coll);
           $data =& $this->large_object_create($rec->table,$rec->attributes[$modified_field]);
@@ -382,8 +390,10 @@ $result = $this->get_result("CREATE TABLE openid_associations (\n".
     trigger_before( 'post_insert', $this, $this );
     if (!$result) { trigger_error("Sorry, the record could not be saved due to a database error.", E_USER_ERROR ); }
     $pkvalue = $this->last_insert_id($result,NULL,NULL);
-    if (is_array($this->aws_upload))
+    if (is_array($this->file_upload))
       $this->aws_putfile($rec,$pkvalue);
+    elseif (!empty($this->file_upload))
+      update_uploadsfile($rec->table,$pkvalue,$this->file_upload);      
     $pkfield = $rec->primary_key;
     $rec->attributes[$pkfield] = $pkvalue;
     $rec->$pkfield =& $rec->attributes[$pkfield];

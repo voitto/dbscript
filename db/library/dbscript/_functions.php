@@ -454,6 +454,28 @@ function read_aws_blob( &$request, $value, $coll, $ext ) {
 }
 
 
+function read_uploads_blob( &$request, $value, $coll, $ext ) {
+  if (isset($coll[$request->resource])) {
+    if ($coll[$request->resource]['location'] == 'uploads') {
+      $file = 'uploads' . DIRECTORY_SEPARATOR . $request->resource . $request->id;
+      if (file_exists($file))
+        print file_get_contents( $file );
+    }
+  }
+}
+
+
+function update_uploadsfile( $table, $id, $tmpfile ) {
+  $coll = environment('collection_cache');
+  if (!(isset($coll[$table])))
+    return;
+  $uploadFile = $coll[$table]['location'].DIRECTORY_SEPARATOR.$table.$id;
+  if (file_exists($uploadFile))
+    unlink($uploadFile);
+  copy($tmpfile,$uploadFile);
+}
+
+
 function unlink_cachefile( $table, $id, $coll ) {
   if (isset($coll[$table])) {
     $cacheFile = $coll[$table]['location'].DIRECTORY_SEPARATOR.$table.$id;
@@ -568,6 +590,8 @@ function render_blob( $value, $ext ) {
   
   header( 'Content-Type: ' . type_of( $ext ) );
   header( "Content-Disposition: inline" );
+
+  read_uploads_blob($req,$value,$coll,$ext);
   
   read_cache_blob($req,$value,$coll);
   

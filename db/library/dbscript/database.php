@@ -94,7 +94,7 @@ class Database {
    * file to upload after insert
    * @var string[]
    */  
-  var $aws_upload;
+  var $file_upload;
   
   /**
    * Get Record
@@ -553,7 +553,7 @@ class Database {
 
 
   function aws_delfile(&$rec, $pkvalue) {
-    $ext = extension_for(type_of( $_FILES[strtolower(classify($rec->table))]['name'][$this->aws_upload[0]] ));
+    $ext = extension_for(type_of( $_FILES[strtolower(classify($rec->table))]['name'][$this->file_upload[0]] ));
     $aws_file = $rec->table . $pkvalue . "." . $ext;
     lib_include( 'S3' );
     $s3 = new S3( environment('awsAccessKey'), environment('awsSecretKey') );
@@ -566,7 +566,7 @@ class Database {
   
   function aws_putfile(&$rec, $pkvalue) {
     global $request;
-    $file = $rec->table . $pkvalue . "." . extension_for(type_of( $_FILES[strtolower(classify($rec->table))]['name'][$this->aws_upload[0]] ));
+    $file = $rec->table . $pkvalue . "." . extension_for(type_of( $_FILES[strtolower(classify($rec->table))]['name'][$this->file_upload[0]] ));
     lib_include( 'S3' );
     $s3 = new S3( environment('awsAccessKey'), environment('awsSecretKey') );
     if (!$s3)
@@ -574,12 +574,12 @@ class Database {
     $result = $s3->putBucket( environment('awsBucket'), 'public-read' );
     if (!$result)
       trigger_error( 'Sorry, there was a problem creating the bucket '.environment('awsBucket').' at Amazon Web Services', E_USER_ERROR );
-    if (file_exists($this->aws_upload[1])) {
-      if (!($s3->putObjectFile( $this->aws_upload[1] , environment('awsBucket'), $file, 'public-read' )))
+    if (file_exists($this->file_upload[1])) {
+      if (!($s3->putObjectFile( $this->file_upload[1] , environment('awsBucket'), $file, 'public-read' )))
         trigger_error( 'Sorry, there was a problem uploading the file to Amazon Web Services', E_USER_ERROR );
-      unlink($this->aws_upload[1]);
+      unlink($this->file_upload[1]);
     }
-    $this->aws_upload = false;
+    $this->file_upload = false;
   }
 
 }
