@@ -188,7 +188,6 @@ if ($env['debug_enabled']) {
   $exec_time = microtime_float();
 }
 
-
 if ( is_dir( $app . $env['view_folder'] ) )
   $request->set_template_path( $app . $env['view_folder'].DIRECTORY_SEPARATOR );
 else
@@ -200,6 +199,32 @@ else
   $request->set_layout_path( $env['layout_folder'].DIRECTORY_SEPARATOR );
 
 $GLOBALS['PATH']['themes'] = $request->template_path . 'wp-themes' . DIRECTORY_SEPARATOR;
+
+
+
+$content_config = 'content'.DIRECTORY_SEPARATOR.'config'.DIRECTORY_SEPARATOR.'config.yml';
+
+if (file_exists( $content_config )) {
+  
+  // Müller-config
+  
+  // if exists /content/config/config.yml
+  
+  // then, theme MUST be present in /content/themes
+  
+  // and plugins from /content/plugins will take precedent
+  // wp-plugins not supported yet in this plugins folder
+  
+  extract( $loader->load( file_get_contents( $content_config )));
+  extract( $$env['enable_db'] );
+  
+  $GLOBALS['PATH']['content_plugins'] = 'content'.DIRECTORY_SEPARATOR.'plugins'.DIRECTORY_SEPARATOR;
+  $GLOBALS['PATH']['themes'] = "content".DIRECTORY_SEPARATOR."themes".DIRECTORY_SEPARATOR;
+  
+}
+
+
+
 
   /**
    * connect to the database with settings from config.yml

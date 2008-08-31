@@ -1009,7 +1009,14 @@ function render_partial( $template ) {
 
 function render_theme( $theme ) {
   
-  global $request;
+  // dbscript
+  global $request, $db;
+  
+  // wordpress
+  global $blogdata, $optiondata, $current_user, $user_login, $userdata;
+  global $user_level, $user_ID, $user_email, $user_url, $user_pass_md5;
+  global $wpdb, $wp_query, $post, $limit_max, $limit_offset, $comments;
+  global $req, $wp_rewrite, $wp_version, $openid, $user_identity, $logic;
   
   $folder = $GLOBALS['PATH']['themes'] . $theme . DIRECTORY_SEPARATOR;
   
@@ -1017,7 +1024,8 @@ function render_theme( $theme ) {
   
   if (isset($request->action) && !($request->action == 'index')) {
     get_header();
-    show_prologue_nav();
+    if ($theme == 'prologue-theme')
+      show_prologue_nav();
     echo '<div id="main">'."\n";
     content_for_layout();
     echo '</div>'."\n";
@@ -1207,19 +1215,24 @@ function lib_include( $file ) {
 
 function load_plugin( $plugin ) {
   
-  if ( file_exists( $GLOBALS['PATH']['plugins'] . $plugin . '.php' ) )
-    include $GLOBALS['PATH']['plugins'] . $plugin . '.php';
+  $plugin_paths = array();
   
-  if ( file_exists( $GLOBALS['PATH']['plugins'] . $plugin . DIRECTORY_SEPARATOR . 'plugin.php' ) )
-    include $plugin . DIRECTORY_SEPARATOR . 'plugin.php';
+  if (isset($GLOBALS['PATH']['content_plugins']))
+    $plugin_paths[] = $GLOBALS['PATH']['content_plugins'];
   
-  if ( file_exists( $GLOBALS['PATH']['plugins'] . $plugin . DIRECTORY_SEPARATOR . 'core.php' ) )
-    include $plugin . DIRECTORY_SEPARATOR . 'core.php';
+  $plugin_paths[] = $GLOBALS['PATH']['plugins'];
   
-  $init = $plugin . "_init";
-  
-  if ( function_exists( $init ) )
-    $init();
+  foreach ($plugin_paths as $plugpath) {
+
+    if ( file_exists( $plugpath . $plugin . '.php' ) ) {
+      include $plugpath . $plugin . '.php';
+      $init = $plugin . "_init";
+      if ( function_exists( $init ) )
+        $init();
+      return;
+    }
+    
+  }
   
 }
 
