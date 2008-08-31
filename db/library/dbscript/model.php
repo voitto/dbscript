@@ -232,7 +232,7 @@ class Model {
               $join =& $db->get_table($Entry->join_table_for('categories', 'entries'));
               $j = $join->base();
               $j->set_value('entry_id',$atomentry->id);
-              $c = $Category->find_by('name',$req->$cname);
+              $c = $Category->find_by('term',$req->$cname);
               if ($c) {
                 $j->set_value('category_id',$c->id);
                 $j->save_changes();
