@@ -2080,4 +2080,43 @@ function normalize_username($username) {
   return trim($username);
 }
 
+function is_jpg( $file ) {
+  return (exif_imagetype($file) == IMAGETYPE_JPEG);
+}
+
+function is_gif( $file ) {
+  return (exif_imagetype($file) == IMAGETYPE_GIF);
+}
+
+function is_png( $file ) {
+  return (exif_imagetype($file) == IMAGETYPE_PNG);
+}
+
+if ( ! function_exists( 'exif_imagetype' ) ) {
+  function exif_imagetype ( $filename ) {
+      if ( ( list($width, $height, $type, $attr) = getimagesize( $filename ) ) !== false ) {
+          return $type;
+      }
+  return false;
+  }
+}
+
+function isset_admin_email() {
+  return (! (environment('email_from') == 'root@localhost' ));
+}
+
+function admin_alert($text) {
+  global $request;
+  if (!isset_admin_email())
+    return;
+  send_email( environment('email_from'), "admin alert for ".$request->base, $text, environment('email_from'), environment('email_name'), false );
+}
+
+function omb_dev_alert($text) {
+  global $request;
+  if (!isset_admin_email() || $request->domain != 'openmicroblogger.com')
+    return;
+  send_email( environment('email_from'), "admin alert for ".$request->base, $text, environment('email_from'), environment('email_name'), false );
+}
+
 ?>

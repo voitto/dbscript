@@ -537,6 +537,16 @@ class Database {
     $return = false;
     trigger_before( 'delete_record', $this, $rec );
     if ($rec->exists) {
+      if (isset($rec->attributes['entry_id']) && $this->table_exists('entries')) {
+        $Entry =& $this->model('Entry');
+        $e = $Entry->find_by(array('resource'=>$rec->table,'record_id'=>$rec->id));
+        if ($e) {
+          $join =& $this->get_table($Entry->join_table_for('categories', 'entries'));
+          $join->find_by('entry_id',$e->id);
+          while ($j = $join->MoveNext())
+            $jdel = $this->get_result( $this->sql_delete_for( $j ) );
+        }
+      }
       if (strlen($rec->attributes[$rec->primary_key]) > 0) {
         $result = $this->get_result( $this->sql_delete_for( $rec ) );
       }

@@ -37,7 +37,8 @@
    *
    *   // function to test whether current user is an administrator
    * function admin() {
-   *   return true;
+   *   // do something here
+   *   // or assert member_of('somegroup')
    * }
    * </code>
    * 
@@ -225,7 +226,7 @@ class Model {
           $req->id = $rec->id;
           $Category =& $db->model('Category');
           $Entry =& $db->model('Entry');
-          for ($i = 0; $i < 10; $i++ ) {
+          for ($i = 0; $i < count($req->params); $i++ ) {
             $cname = "category".$i;
             $added = array();
             if (isset($req->$cname) && !(in_array($req->$cname, $added))) {
@@ -237,6 +238,17 @@ class Model {
                 $j->set_value('category_id',$c->id);
                 $j->save_changes();
                 $added[] = $req->$cname;
+              } else {
+                if (isset_admin_email()) {
+                  $c = $Category->base();
+                  $c->set_value( 'name', ucwords($req->$cname));
+                  $c->set_value( 'term', strtolower($req->$cname));
+                  $c->save();
+                  $j->set_value('category_id',$c->id);
+                  $j->save_changes();
+                  $added[] = $req->$cname;
+                  admin_alert( "created a new category: ".$req->$cname." at ".$req->base );
+                }
               }
             }
           }
