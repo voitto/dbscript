@@ -37,8 +37,7 @@
    *
    *   // function to test whether current user is an administrator
    * function admin() {
-   *   // do something here
-   *   // or assert member_of('somegroup')
+   *   return true;
    * }
    * </code>
    * 
@@ -233,12 +232,12 @@ class Model {
               $join =& $db->get_table($Entry->join_table_for('categories', 'entries'));
               $j = $join->base();
               $j->set_value('entry_id',$atomentry->id);
-              $c = $Category->find_by('term',$req->$cname);
+              $c = $Category->find_by('name',$req->$cname);
               if ($c) {
                 $j->set_value('category_id',$c->id);
                 $j->save_changes();
                 $added[] = $req->$cname;
-              } else {
+              } elseif (!empty($req->$cname)) {
                 if (isset_admin_email()) {
                   $c = $Category->base();
                   $c->set_value( 'name', ucwords($req->$cname));
