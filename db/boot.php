@@ -388,11 +388,6 @@ function test_log_in() {
   $_SESSION['openid_complete'] = true;
 }
 
-echo classify('statuses');
-
-echo "<BR>";
-
-echo tableize('Status');
 
 
 /**
