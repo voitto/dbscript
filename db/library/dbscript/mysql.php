@@ -463,7 +463,7 @@ $result = $this->get_result("CREATE TABLE openid_associations (\n".
       $sql .= "$comma $field $data_type";
       $comma = ",";
     }
-    $sql .= ")";
+    $sql .= ") CHARACTER SET utf8";
     $result = $this->get_result($sql);
     if ($result)
       $this->tables[] = $table;

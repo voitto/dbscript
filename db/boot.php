@@ -95,7 +95,10 @@ foreach( array(
 }
 
   // load HTTP_Negotiate by Gary Court
-include $GLOBALS['PATH']['library'] . 'http_negotiate.php';
+lib_include( 'http_negotiate' );
+
+  // load Cake's inflector
+lib_include( 'inflector' );
 
 
 error_reporting( E_ALL & ~E_NOTICE & ~E_WARNING );
@@ -188,6 +191,33 @@ if ($env['debug_enabled']) {
   $exec_time = microtime_float();
 }
 
+
+
+
+
+$content_config = 'content'.DIRECTORY_SEPARATOR.'config'.DIRECTORY_SEPARATOR.'config.yml';
+
+if (file_exists( $content_config )) {
+  
+  // if    exists /content/config/config.yml
+  // then  use /content
+  
+  // theme MUST be present in /content/themes
+  
+  // plugins from /content/plugins will take precedent
+  // todo wp-plugins not supported yet in this plugins folder
+  
+  extract( $loader->load( file_get_contents( $content_config )));
+  extract( $$env['enable_db'] );
+  
+  $GLOBALS['PATH']['content_plugins'] = 'content'.DIRECTORY_SEPARATOR.'plugins'.DIRECTORY_SEPARATOR;
+  $GLOBALS['PATH']['themes'] = "content".DIRECTORY_SEPARATOR."themes".DIRECTORY_SEPARATOR;
+  
+}
+
+
+// set up the content-negotiation template paths
+
 if ( is_dir( $app . $env['view_folder'] ) )
   $request->set_template_path( $app . $env['view_folder'].DIRECTORY_SEPARATOR );
 else
@@ -198,30 +228,11 @@ if ( is_dir( $app . $env['layout_folder'] ) )
 else
   $request->set_layout_path( $env['layout_folder'].DIRECTORY_SEPARATOR );
 
-$GLOBALS['PATH']['themes'] = $request->template_path . 'wp-themes' . DIRECTORY_SEPARATOR;
 
+// if not using /content, set the wp-theme location
 
-
-$content_config = 'content'.DIRECTORY_SEPARATOR.'config'.DIRECTORY_SEPARATOR.'config.yml';
-
-if (file_exists( $content_config )) {
-  
-  // Müller-config
-  
-  // if exists /content/config/config.yml
-  
-  // then, theme MUST be present in /content/themes
-  
-  // and plugins from /content/plugins will take precedent
-  // wp-plugins not supported yet in this plugins folder
-  
-  extract( $loader->load( file_get_contents( $content_config )));
-  extract( $$env['enable_db'] );
-  
-  $GLOBALS['PATH']['content_plugins'] = 'content'.DIRECTORY_SEPARATOR.'plugins'.DIRECTORY_SEPARATOR;
-  $GLOBALS['PATH']['themes'] = "content".DIRECTORY_SEPARATOR."themes".DIRECTORY_SEPARATOR;
-  
-}
+if (!file_exists( $content_config ))
+  $GLOBALS['PATH']['themes'] = $request->template_path . 'wp-themes' . DIRECTORY_SEPARATOR;
 
 
 

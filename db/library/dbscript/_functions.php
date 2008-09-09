@@ -25,31 +25,9 @@
 
 function classify( $resource ) {
   
-  $n = strtolower(str_replace( '_', ' ', $resource ));
+  $inflector =& Inflector::getInstance();
   
-  switch( $n ) {
-    
-    // renaming handlers
-    
-    case ( $n == 'person' || $n == 'people' ) :
-      $n = 'Person';
-      break;
-      
-    case ( substr( $n, -3 ) == 'ies' ) :
-      $n = substr( $n, 0, -3 ) . "y";
-      break;
-      
-    case ( substr( $n, -1 ) == 's' ) :
-      $n = substr( $n, 0, -1 );
-      break;
-      
-  }
-  
-  $n = ucwords($n);
-  
-  $n = str_replace( ' ', '', $n );
-  
-  return $n;
+  return $inflector->classify($resource);
   
 }
 
@@ -67,38 +45,10 @@ function classify( $resource ) {
    */
    
 function tableize( $object ) {
-
-  $n = preg_split( '//', $object );
   
-    // replace uppercase Chars with _ and lowercase char
-  foreach ( $n as $idx=>$char ) {
-    if ( ctype_upper( $char ) && ( $idx > 1 ) && $char )
-      $n[$idx] = "_" . strtolower($char);
-    elseif ( ctype_upper( $char ) )
-      $n[$idx] = strtolower($char);
-  }
-
-  $n = implode($n);
-
-  switch( strtolower($n) ) {
-    
-    // renaming handlers
-
-    case ( $n == 'person' || $n == 'people' ) :
-      $n = 'people';
-      break;
-
-    case ( substr( $n, -1 ) == 'y' ) :
-      $n = substr( $n, 0, -1 ) . "ies";
-      break;
-      
-    case ( substr( $n, -1 ) != 's' ) :
-      $n = $n . "s";
-      break;
-      
-  }
+  $inflector =& Inflector::getInstance();
   
-  return $n;
+  return $inflector->tableize($object);
   
 }
 
@@ -2118,5 +2068,17 @@ function omb_dev_alert($text) {
     return;
   send_email( environment('email_from'), "admin alert for ".$request->base, $text, environment('email_from'), environment('email_name'), false );
 }
+
+// for Cake libs
+
+function uses( $var ) {
+  return;
+}
+
+class Object {
+  
+}
+
+// end Cake libs
 
 ?>

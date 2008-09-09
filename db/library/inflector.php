@@ -45,18 +45,7 @@
  * @subpackage  cake.cake.libs
  */
 class Inflector extends Object {
-/**
- * Constructor.
- *
- */
-  function __construct() {
-    parent::__construct();
-  }
-/**
- * Gets a reference to the Inflector object instance
- *
- * @return object
- */
+
   function &getInstance() {
     static $instance = array();
 
@@ -141,13 +130,6 @@ class Inflector extends Object {
     $pluralRules = $corePluralRules;
     $uninflected = $coreUninflectedPlural;
     $irregular = $coreIrregularPlural;
-
-    if (file_exists(CONFIGS . 'inflections.php')) {
-      include(CONFIGS.'inflections.php');
-      $pluralRules = Set::pushDiff($pluralRules, $corePluralRules);
-      $uninflected = Set::pushDiff($uninflectedPlural, $coreUninflectedPlural);
-      $irregular = Set::pushDiff($irregularPlural, $coreIrregularPlural);
-    }
     $_this->pluralRules = array('pluralRules' => $pluralRules, 'uninflected' => $uninflected, 'irregular' => $irregular);
     $_this->pluralized = array();
   }
