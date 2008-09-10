@@ -948,6 +948,12 @@ class Model {
     
     trigger_before( 'find', $this, $db );
     
+    if (isset($this->find_by) && $find_by == NULL)
+      $find_by = $this->find_by;
+    
+    if (isset($this->id) && $id == NULL)
+      $find_by = $this->find_by;
+    
     if ($id != NULL)
       $id = $db->escape_string($id);
 
