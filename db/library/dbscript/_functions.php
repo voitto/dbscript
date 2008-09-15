@@ -1391,6 +1391,9 @@ function public_resource() {
   
   if (in_array('always',$datamodel->access_list['read']['id']))
     return true;
+  
+  if (in_array('everyone',$datamodel->access_list['read']['id']))
+    return true;
     
   if (isset($req->client_wants))
     if (in_array($req->action.".".$req->client_wants,$datamodel->access_list['read']['id']))

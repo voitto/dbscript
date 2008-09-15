@@ -967,7 +967,10 @@ class Model {
     
     $db->recordsets[$this->table] = $db->get_recordset($this->get_query($id, $find_by));
     $rs =& $db->recordsets[$this->table];
-
+    
+    unset($this->find_by);
+    unset($this->id);
+    
     if (!$rs) return false;
     if ( $id != NULL && $rs->rowcount > 0 )
       if ( $find_by != NULL )

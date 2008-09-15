@@ -259,7 +259,7 @@ class View {
           'qs' => 1.000,
           'type' => 'text/html',
           'encoding' => null,
-          'charset' => 'iso-8859-1',
+          'charset' => 'utf-8',
           'language' => 'en',
           'size' => 3000
         )
