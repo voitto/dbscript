@@ -643,9 +643,9 @@ class Mapper {
     global $pretty_url_base;
     if (isset($pretty_url_base) && !empty($pretty_url_base)) {
       if (!empty($_SERVER['QUERY_STRING']))
-        return $pretty_url_base.'?'.$_SERVER['QUERY_STRING'];
+        return $pretty_url_base.'/?'.$_SERVER['QUERY_STRING'];
       else
-        return $pretty_url_base;
+        return $pretty_url_base.'/';
     }
     return $_SERVER['FULL_URL'];
   }
