@@ -60,6 +60,7 @@ class Route {
   
   function build_url( $params, $base ) {
     $url = array();
+    
     foreach ( $this->patterns as $pos => $str ) {
       if ( substr( $str, 0, 1 ) == ':' ) {
         $url[] = $params[substr( $str, 1 )];
@@ -67,9 +68,15 @@ class Route {
         $url[] = $str;
       }
     }
+    global $pretty_url_base;
+    if (isset($pretty_url_base) && !empty($pretty_url_base))
+      $base = $pretty_url_base;
     if ( !( substr( $base, -1 ) == '/' ))
       $base = $base . "/";
-    return $base . "?". implode ( '/', $url );
+    if (isset($pretty_url_base) && !empty($pretty_url_base))
+      return $base . "". implode ( '/', $url );
+    else
+      return $base . "?". implode ( '/', $url );
   }
 
 }

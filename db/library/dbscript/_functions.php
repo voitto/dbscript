@@ -650,11 +650,23 @@ function url_for( $params, $altparams = NULL ) {
 }
 
 
-function base_url() {
+function base_url($return = false) {
 
   global $request;
+  global $pretty_url_base;
   
-  print $request->base;
+  if (isset($pretty_url_base) && !empty($pretty_url_base))
+    $base = $pretty_url_base;
+  else
+    $base = $request->base;
+  
+  if ( !( substr( $base, -1 ) == '/' ))
+    $base = $base . "/";
+  
+  if ($return)
+    return $base;
+    
+  echo $base;
   
 }
 
@@ -991,7 +1003,14 @@ function render_theme( $theme ) {
 
 function theme_path() {
   
-  return $GLOBALS['PATH']['themes'] . environment('theme') . DIRECTORY_SEPARATOR;
+  global $pretty_url_base;
+  
+  if (isset($pretty_url_base) && !empty($pretty_url_base))
+    $base = $pretty_url_base . DIRECTORY_SEPARATOR;
+  else
+    $base = "";
+  
+  return $base . $GLOBALS['PATH']['themes'] . environment('theme') . DIRECTORY_SEPARATOR;
   
 }
 
@@ -2083,5 +2102,33 @@ class Object {
 }
 
 // end Cake libs
+
+
+// if REST PUT is only one field, via Ajax
+// then show the field value after saving
+
+function ajax_put_field( &$model, &$rec ) {
+  
+  global $request;
+  
+  if (!(is_ajax()))
+    return;
+   
+  $fields = $model->fields_from_request( $request );
+    
+  if (isset($fields[$request->resource]))
+    $fieldsarr = $fields[$request->resource];
+  
+  if (count($fieldsarr) == 1) {
+    list($field,$type) = each($fieldsarr);
+    echo $rec->$field;
+    exit;
+  }
+  
+}
+
+function is_ajax() {
+  return (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH']=="XMLHttpRequest");
+}
 
 ?>

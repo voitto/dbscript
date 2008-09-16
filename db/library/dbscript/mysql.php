@@ -124,20 +124,20 @@ class MySQL extends Database {
     UNIQUE KEY uurl (hash),
     KEY url (url(30)),
     KEY user_id (user_id)
-    )");
+    ) CHARACTER SET latin1");
 $result = $this->get_result("CREATE TABLE openid_nonces (\n".
             "  server_url VARCHAR(2047),\n".
             "  timestamp INTEGER,\n".
             "  salt CHAR(40),\n".
             "  UNIQUE (server_url(255), timestamp, salt)\n".
-            ")");
+            ") CHARACTER SET latin1");
       
 //CREATE TABLE openid_identities ( uurl_id int NOT NULL, user_id int NOT NULL default '0', url text, hash char(32) )
 
 //CREATE TABLE oauth_consumers (consumer_key CHAR(255) PRIMARY KEY, secret CHAR(40), description CHAR(40));
-    $result = $this->get_result("CREATE TABLE IF NOT EXISTS oauth_consumers (consumer_key CHAR(255) PRIMARY KEY, secret CHAR(40), description CHAR(40))");
+    $result = $this->get_result("CREATE TABLE IF NOT EXISTS oauth_consumers (consumer_key CHAR(255) PRIMARY KEY, secret CHAR(40), description CHAR(40)) CHARACTER SET latin1");
 //CREATE TABLE oauth_tokens (consumer_key CHAR(40), token CHAR(40), secret CHAR(40), token_type CHAR(7), nonce CHAR(40), user_id INT DEFAULT 0, expires INT DEFAULT 0);
-    $result = $this->get_result("CREATE TABLE IF NOT EXISTS oauth_tokens (consumer_key CHAR(255), token CHAR(40), secret CHAR(40), token_type CHAR(7), nonce CHAR(40), user_id TINYINT DEFAULT 0, expires INT DEFAULT 0)");
+    $result = $this->get_result("CREATE TABLE IF NOT EXISTS oauth_tokens (consumer_key CHAR(255), token CHAR(40), secret CHAR(40), token_type CHAR(7), nonce CHAR(40), user_id TINYINT DEFAULT 0, expires INT DEFAULT 0) CHARACTER SET latin1");
 //
     $result = $this->get_result("INSERT INTO oauth_consumers (consumer_key, secret, description) VALUES ('DUMMYKEY', '', 'Unidentified Consumer')");
 //CREATE TABLE openid_nonces ( server_url VARCHAR(2047), timestamp INT, salt CHAR(40) );
@@ -151,7 +151,7 @@ $result = $this->get_result("CREATE TABLE openid_associations (\n".
             "  lifetime INTEGER,\n".
             "  assoc_type VARCHAR(64),\n".
             "  PRIMARY KEY (server_url(255), handle)\n".
-            ")");
+            ") CHARACTER SET latin1");
 
 
   }

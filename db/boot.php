@@ -58,6 +58,13 @@ global $views,$app,$config,$env,$exec_time,$version,$response;
 global $variants,$request,$loader,$db,$logic;
 
 
+  /**
+   * optional pretty URLs
+   */
+
+//global $pretty_url_base;
+//$pretty_url_base = "http://openmicroblogger.com";
+
 
   // set path to db directory
 if (is_dir('db'))
@@ -387,6 +394,8 @@ before_filter( 'model_security', $request->action );
 after_filter( 'send_ping', 'insert_from_post' );
 after_filter( 'send_ping', 'update_from_post' );
 
+  // echo value after single-field Ajax PUT call
+after_filter( 'ajax_put_field', 'update_from_post' );
 
 
 // authenticate yourself without OpenID

@@ -640,6 +640,9 @@ class Mapper {
     } else {
       $_SERVER['FULL_URL'] .= $_SERVER['SERVER_NAME'] . $port . $script;
     }
+    global $pretty_url_base;
+    if (isset($pretty_url_base) && !empty($pretty_url_base))
+      return $pretty_url_base.'?'.$_SERVER['QUERY_STRING'];
     return $_SERVER['FULL_URL'];
   }
   
