@@ -2,7 +2,7 @@
 
   /** 
    * dbscript -- restful openid framework
-   * @version 0.5.0 -- 12-August-2008
+   * @version 0.6.0 -- 2-October-2008
    * @author Brian Hendrickson <brian@dbscript.net>
    * @link http://dbscript.net/
    * @copyright Copyright 2008 Brian Hendrickson
@@ -47,7 +47,7 @@
    * @package dbscript
    * @author Brian Hendrickson <brian@dbscript.net>
    * @access public
-   * @version 0.5.0 -- 12-August-2008
+   * @version 0.6.0 -- 2-October-2008
    */
 
 class Model {
@@ -893,6 +893,12 @@ class Model {
     global $db;
     trigger_before( 'save', $this, $db );
     
+    if (!(isset($this->table)))
+      $this->table = tableize( get_class( $this ));
+    
+    if ($this->table == 'models')
+      return;
+    
     if (!(isset($db->tables)))
       $db->tables = $db->get_tables();
 
@@ -907,14 +913,28 @@ class Model {
       }
     }
     
+    if ( !( isset( $this->primary_key )) && $this->table != 'db_sessions')
+      trigger_error("The ".$this->table." table must have a primary key. Example: ".$this->table."->set_primary_key('field')".@mysql_error($this->conn), E_USER_ERROR );
+    $this->exists = true;
+    $this->set_routes( $this->table );
+    trigger_after( 'save', $this, $db );
+  }
+  
+  function migrate() {
+    
     // schema sync
     
-    #$fields = $db->get_fields( $this->table );
-    #foreach ( $this->field_array as $field => $data_type ) {
-    #  if ( !( array_key_exists( $field, $fields ) ) ) {
-    #    $db->add_field( $this->table, $field, $data_type );
-    #  }
-    #}
+    global $db;
+    
+    if (empty($this->table))
+      return;
+    
+    $fields = $db->get_fields( $this->table );
+    foreach ( $this->field_array as $field => $data_type ) {
+      if ( !( array_key_exists( $field, $fields ) ) ) {
+        $db->add_field( $this->table, $field, $data_type );
+      }
+    }
     #if ( !( isset( $this->primary_key ))) {
     # if (isset($fields[$this->table."_primary_key"]))
     #    $this->set_primary_key( $fields[$this->table."_primary_key"] );
@@ -927,11 +947,8 @@ class Model {
     #  }
     #}
 
-    if ( !( isset( $this->primary_key )) && $this->table != 'db_sessions')
-      trigger_error("The ".$this->table." table must have a primary key. Example: ".$this->table."->set_primary_key('field')".@mysql_error($this->conn), E_USER_ERROR );
-    $this->exists = true;
-    $this->set_routes( $this->table );
-    trigger_after( 'save', $this, $db );
+    
+    
   }
   
   function is_blob($field) {

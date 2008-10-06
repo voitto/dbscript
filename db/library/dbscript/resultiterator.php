@@ -2,7 +2,7 @@
 
   /** 
    * dbscript -- restful openid framework
-   * @version 0.5.0 -- 12-August-2008
+   * @version 0.6.0 -- 2-October-2008
    * @author Brian Hendrickson <brian@dbscript.net>
    * @link http://dbscript.net/
    * @copyright Copyright 2008 Brian Hendrickson
@@ -21,7 +21,7 @@
    * @package dbscript
    * @author Brian Hendrickson <brian@dbscript.net>
    * @access public
-   * @version 0.5.0 -- 12-August-2008
+   * @version 0.6.0 -- 2-October-2008
    */
    
 class ResultIterator extends GenericIterator {

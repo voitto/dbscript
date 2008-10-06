@@ -2,7 +2,7 @@
 
   /** 
    * dbscript -- restful openid framework
-   * @version 0.5.0 -- 12-August-2008
+   * @version 0.6.0 -- 2-October-2008
    * @author Brian Hendrickson <brian@dbscript.net>
    * @link http://dbscript.net/
    * @copyright Copyright 2008 Brian Hendrickson
@@ -19,7 +19,7 @@
    * @package dbscript
    * @author Brian Hendrickson <brian@dbscript.net>
    * @access public
-   * @version 0.5.0 -- 12-August-2008
+   * @version 0.6.0 -- 2-October-2008
    */
 
 class View {
@@ -38,6 +38,7 @@ class View {
     global $db;
     global $request;
     $env =& environment();
+    
     if ( isset( $request->resource ))
       $this->collection = new Collection( $request->resource );
     else
@@ -55,18 +56,35 @@ class View {
     else
       $this->named_vars['resource'] = false;
     $this->controller = $request->controller;
+
+
+    load_apps();
     
+
+
+    
+    $controller_path = controller_path();
     // check for a controller file in controllers/[resource].php
     if ( isset( $request->resource )) {
-      $cont = controller_path() . $request->resource . ".php";
-      if ( file_exists( $cont ))
+      $cont = $controller_path . $request->resource . ".php";
+      if ( file_exists( $cont )) {
         $this->controller = $request->resource . ".php";
+      } else {
+        if (isset($GLOBALS['PATH']['apps'])) {
+          foreach($GLOBALS['PATH']['apps'] as $k=>$v) {
+            if (file_exists($v['controller_path'].$request->resource . ".php" )) {
+              $this->controller =  $request->resource . ".php";
+              $controller_path = $v['controller_path'];
+            }
+          }
+        }
+      }
     }
     
-    if ( is_file( controller_path() . $this->controller ))
-      require_once( controller_path() . $this->controller );
+    if ( is_file( $controller_path . $this->controller ))
+      require_once( $controller_path . $this->controller );
     else
-      trigger_error( 'Sorry, the controller was not found at ' . controller_path() . $this->controller, E_USER_ERROR );
+      trigger_error( 'Sorry, the controller was not found at ' . $controller_path . $this->controller, E_USER_ERROR );
     
     if (!(isset($env['content_types'])))
       trigger_error( 'Sorry, the content_types array was not found in the configuration file', E_USER_ERROR );

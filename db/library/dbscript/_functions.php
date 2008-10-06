@@ -2,7 +2,7 @@
 
   /** 
    * dbscript -- restful openid framework
-   * @version 0.5.0 -- 12-August-2008
+   * @version 0.6.0 -- 2-October-2008
    * @author Brian Hendrickson <brian@dbscript.net>
    * @link http://dbscript.net/
    * @copyright Copyright 2008 Brian Hendrickson
@@ -968,6 +968,19 @@ function render_partial( $template ) {
   
 }
 
+function add_action( $act, $func ) {
+  //admin_head, photos_head
+  if (function_exists($func))
+    before_filter( $func, $act );
+  return false;
+}
+
+function app_menu($title,$url='',$role='member') {
+  if (function_exists('add_management_page')) {
+    add_management_page( $title, $title, $role, $file, '', $url );
+  }        
+}
+
 
 function render_theme( $theme ) {
   
@@ -979,6 +992,7 @@ function render_theme( $theme ) {
   global $user_level, $user_ID, $user_email, $user_url, $user_pass_md5;
   global $wpdb, $wp_query, $post, $limit_max, $limit_offset, $comments;
   global $req, $wp_rewrite, $wp_version, $openid, $user_identity, $logic;
+  global $submenu;
   
   $folder = $GLOBALS['PATH']['themes'] . $theme . DIRECTORY_SEPARATOR;
   
@@ -1186,8 +1200,9 @@ function load_plugin( $plugin ) {
   
   $plugin_paths = array();
   
-  if (isset($GLOBALS['PATH']['content_plugins']))
-    $plugin_paths[] = $GLOBALS['PATH']['content_plugins'];
+  if (isset($GLOBALS['PATH']['app_plugins']))
+    foreach($GLOBALS['PATH']['app_plugins'] as $path)
+      $plugin_paths[] = $path;
   
   $plugin_paths[] = $GLOBALS['PATH']['plugins'];
   
@@ -1704,6 +1719,8 @@ function load_model( &$model, &$model2 ) {
   if (!($db->models[$tab]->exists))
     $model->register($tab);
 }
+
+
   /**
    * in_string
    * 
@@ -2127,8 +2144,145 @@ function ajax_put_field( &$model, &$rec ) {
   
 }
 
+function migrate() {
+  
+  global $db;
+  
+  $db->just_get_objects();
+  
+  foreach($db->models as $model)
+    $model->migrate();
+  
+  echo "<BR>The database schema is now synced to the data models.<BR><BR>";
+  exit;
+  
+}
+
 function is_ajax() {
   return (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH']=="XMLHttpRequest");
 }
+
+/**
+ * Reference Value
+ * 
+ * get a value from another table
+ * 
+ * @author Brian Hendrickson <brian@dbscript.net>
+ * @access public
+ * @param string table
+ * @param string field
+ * @param integer pkval
+ * @return string[]
+ */
+function reference_value( $table, $field, $pkval ) {
+  global $db;
+  $rec = $db->get_record( $table, $pkval );
+  return $rec->$field;
+}
+
+
+function app_profile_show($resource,$action) {
+  
+  global $request;
+  echo '<script type="text/javascript">'."\n\n";
+  echo '// <![CDATA['."\n\n";
+  echo '  $(document).ready(function() {'."\n\n";
+  echo "  var url = '".$request->url_for(array('resource'=>$resource,'action'=>$action))."' + '/partial';"."\n\n";
+  echo '  $("#'.$resource.'_profile").html("<img src=\'resource/jeditable/indicator.gif\'>");'."\n\n";
+  echo '  $.get(url, function(str) {'."\n\n";
+  echo '    $("#'.$resource.'_profile").html(str);'."\n\n";
+  echo '  });'."\n\n";
+  echo '});'."\n\n";
+  echo '// ]]>'."\n\n";
+  echo '</script>'."\n\n";
+  echo '<p class="'.$resource.'_profile" id="'.$resource.'_profile"></p>';
+  
+}
+
+function app_register_init($resource,$action,$button,$appname,$group) {
+  
+  // this func will be triggered by 'init' crosscut
+  global $request;
+  
+  // make a url from the resource/action Route pattern
+  $url = $request->url_for(array(
+    
+    'resource'  =>   $resource,
+    'action'    =>   $action
+    
+  ));
+  
+  // todo this should be expressable in the url-for XXX
+  $url = $url."/partial";
+  
+  // add button to menu
+  add_management_page( $button, $appname, $group, '', '', $url );
+  
+}
+
+
+function get_app_id() {
+  
+  global $db;
+  
+  global $request;
+  
+  if (!($request->resource == 'identities'))
+    return false;
+  
+  if ($request->id > 0)
+    return $request->id;
+  elseif (get_profile_id())
+    return get_profile_id();
+  else
+    return false;
+  
+}
+
+
+function load_apps() {
+  
+  // enable wp-style callback functions
+  
+  global $db,$request;
+  
+  $identity = get_app_id();
+  
+  if (!$identity)
+    return;
+
+  $Identity =& $db->model('Identity');
+  $Setting =& $db->model('Setting');
+  
+  $i = $Identity->find($identity);
+  
+  while ($s = $i->NextChild('settings')){
+    $s = $Setting->find($s->id);
+    if ($s->name = 'app')
+      app_init( $s->value );
+  }
+  
+  global $current_user;
+  trigger_before( 'init', $current_user, $current_user );
+  
+}
+
+function app_init($appname) {
+  
+  $events = array(
+    'admin_head'   => 'head',
+    'admin_menu'   => 'menu',
+    'init'         => 'init',
+    'wp_head'      => 'head',
+    'publish_post' => 'post',
+    'the_content'  => 'show'
+  );
+  
+  foreach( $events as $wpevent=>$dbevent )
+    if (function_exists($appname.'_'.$dbevent))
+      add_action( $wpevent, $appname.'_'.$dbevent);
+  
+}
+
 
 ?>

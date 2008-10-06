@@ -2,7 +2,7 @@
    
   /** 
    * dbscript -- restful openid framework
-   * @version 0.5.0 -- 12-August-2008
+   * @version 0.6.0 -- 2-October-2008
    * @author Brian Hendrickson <brian@dbscript.net>
    * @link http://dbscript.net/
    * @copyright Copyright 2008 Brian Hendrickson
@@ -46,9 +46,12 @@
    Version 0.5.0, 12-August-2008
      new templates: vcard, hcard, ics, rdf, json, atom
    
+   Version 0.6.0, 2-October-2008
+     apps, openappstore
+   
    */
    
-$version = '0.5.0';
+$version = '0.6.0';
 
   /**
    * directory paths
@@ -157,7 +160,7 @@ $request->connect(
   // load static-file-cache and debug aspects
 include $GLOBALS['PATH']['plugins'] . 'renderer.php';
 
-
+// this doesn't do anything because the aspect-filter was deleted XXX
 $request->routematch();
 
 
@@ -280,6 +283,13 @@ if ( $db->just_get_objects() )
 
 
   /**
+   * connect pre-plugin routes
+   */
+  
+$request->connect( 'migrate' );
+
+
+  /**
    * load plugins
    */
 
@@ -356,8 +366,6 @@ $request->connect(
 );
 
 $request->connect( '', array( 'resource'=>$env['goes'], 'action'=>'get' ) );
-
-
 
   // (for debugging) print the current request variables and die
 #aspect_join_functions( 'routematch', 'catch_params' );

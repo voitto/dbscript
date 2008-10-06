@@ -2,7 +2,7 @@
 
   /** 
    * dbscript -- restful openid framework
-   * @version 0.5.0 -- 12-August-2008
+   * @version 0.6.0 -- 2-October-2008
    * @author Brian Hendrickson <brian@dbscript.net>
    * @link http://dbscript.net/
    * @copyright Copyright 2008 Brian Hendrickson
@@ -30,7 +30,7 @@
    * @author Brian Hendrickson <brian@dbscript.net>
    * @access public
    * @return object
-   * @version 0.3.1
+   * @version 0.6.0
    */
 
 class Mapper {
@@ -413,13 +413,24 @@ class Mapper {
     
     if (isset($this->client_wants))
       $ext = $this->client_wants;
+      
+    $resource_path = $this->template_path;
+    
+    if (!(file_exists($this->template_path . $resource))) {
+      if (isset($GLOBALS['PATH']['apps'])) {
+        foreach($GLOBALS['PATH']['apps'] as $k=>$v) {
+          if (file_exists($v['layout_path'].$resource ))
+            $resource_path = $v['layout_path'];
+        }
+      }
+    }
     
     // example: blah.net/?posts/new.html
     
     // searching for a layout to go with the partial _new
     
     // /posts/new.html
-    $view = $this->template_path . $resource . $template . "." . $ext;
+    $view = $resource_path . $resource . $template . "." . $ext;
     
     // /new.html
     if (!(is_file($view)))
@@ -427,7 +438,7 @@ class Mapper {
     
     // /posts/index.html
     if (!$partial && !(is_file($view)))
-      $view = $this->template_path . $resource . 'index' . "." . $ext;
+      $view = $resource_path . $resource . 'index' . "." . $ext;
     
     // /index.html
     if (!$partial && !(is_file($view)))
@@ -443,7 +454,7 @@ class Mapper {
       // found a potential layout but is there a partial with the same extension?
       
       // /posts/_new.ext  ??
-      if ((!(file_exists($this->template_path . $resource . "_" . $action . "." . $ext)))
+      if ((!(file_exists($resource_path . $resource . "_" . $action . "." . $ext)))
         // /_new.ext    ??
         && (!(file_exists($this->template_path . "_" . $action . "." . $ext))))
           return false;

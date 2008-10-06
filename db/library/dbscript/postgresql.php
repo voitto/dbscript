@@ -2,7 +2,7 @@
 
   /** 
    * dbscript -- restful openid framework
-   * @version 0.5.0 -- 12-August-2008
+   * @version 0.6.0 -- 2-October-2008
    * @author Brian Hendrickson <brian@dbscript.net>
    * @link http://dbscript.net/
    * @copyright Copyright 2008 Brian Hendrickson
@@ -26,7 +26,7 @@
    * @package dbscript
    * @author Brian Hendrickson <brian@dbscript.net>
    * @access public
-   * @version 0.5.0 -- 12-August-2008
+   * @version 0.6.0 -- 2-October-2008
    * @todo support array datatypes
    */
 
@@ -487,6 +487,7 @@ class PostgreSQL extends Database {
   function add_field( $table, $field, $data_type ) {
     trigger_before( 'add_field', $this, $this );
     $sql = "ALTER TABLE $table ADD COLUMN $field $data_type";
+    echo $sql."<BR>";
     $result = $this->get_result($sql);
   }
   function has_table($t) {

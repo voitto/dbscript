@@ -2,7 +2,7 @@
 
   /** 
    * dbscript -- restful openid framework
-   * @version 0.5.0 -- 12-August-2008
+   * @version 0.6.0 -- 2-October-2008
    * @author Brian Hendrickson <brian@dbscript.net>
    * @link http://dbscript.net/
    * @copyright Copyright 2008 Brian Hendrickson
@@ -27,7 +27,7 @@
    * @package dbscript
    * @author Brian Hendrickson <brian@dbscript.net>
    * @access public
-   * @version 0.5.0 -- 12-August-2008
+   * @version 0.6.0 -- 2-October-2008
    */
 
 class BootLoader {
@@ -43,6 +43,7 @@ class BootLoader {
       $this->subclasses = $classes;
     else
       $this->subclasses = array(
+        'RackUpApplication',
         'BuildFramework',
         'Dependencies',
         'BeforeAppRuns',
@@ -52,7 +53,6 @@ class BootLoader {
         'AfterAppLoads',
         'MixinSessionContainer',
         'ChooseAdapter',
-        'RackUpApplication',
         'ReloadClasses',
         'ReloadTemplates'
       );
@@ -189,16 +189,27 @@ class LoadClasses extends BootLoader {
     else
       $app = 'db';
     
-
-    foreach ($paths as $name => $loadpath) {
+    $loadpaths = array();
+    
+    foreach($paths as $name=>$path)
+      if (!empty($path))
+        $loadpaths[$name] = $GLOBALS['PATH']['app'].$path.DIRECTORY_SEPARATOR;
+    
+    if (isset($GLOBALS['PATH']['apps'])) {
+      foreach($GLOBALS['PATH']['apps'] as $k=>$v) {
+        $loadpaths[$k] = $v['model_path'];
+      }
+    }
+    
+    foreach ($loadpaths as $name => $loadpath) {
       //next unless path.last && name != :application
       //Dir[path.first / path.last].each do |file|
       //load_file file
-      $path = $GLOBALS['PATH']['app'].$loadpath;
-        if (!empty($loadpath) && $handle = opendir($path)) {
+     
+        if (!empty($loadpath) && $handle = opendir($loadpath)) {
           while (false !== ($file = readdir($handle))) {
             if ($file != '.' && $file != '..' && substr($file,-3) == 'php') {
-              require_once $path.DIRECTORY_SEPARATOR.$file;
+              require_once $loadpath.$file;
               $cl = substr($file,0,-4);
               if (!(isset($db->models[tableize($cl)])))
                 $db->models[tableize($cl)] = new $cl();
@@ -334,7 +345,29 @@ class RackUpApplication extends BootLoader {
   
   function run() {
     global $config;
-    //$config[$app] = new RackApplication();
+    $apps = environment('apps');
+    $GLOBALS['PATH']['app_plugins'] = array();
+    $GLOBALS['PATH']['apps'] = array();
+    foreach($apps as $app) {
+      $GLOBALS['PATH']['app_plugins'][] = $app.DIRECTORY_SEPARATOR.'plugins'.DIRECTORY_SEPARATOR;
+      $GLOBALS['PATH']['apps'][$app] = array(
+        'layout_path' => $app.DIRECTORY_SEPARATOR.'views'.DIRECTORY_SEPARATOR,
+        'model_path' => $app.DIRECTORY_SEPARATOR.'models'.DIRECTORY_SEPARATOR,
+        'controller_path' => $app.DIRECTORY_SEPARATOR.'controllers'.DIRECTORY_SEPARATOR
+      );
+    }
+    
+    //    if ( is_dir( $app . $env['view_folder'] ) )
+    //      $request->set_template_path( $app . $env['view_folder'].DIRECTORY_SEPARATOR );
+    //    else
+    //      $request->set_template_path( $env['view_folder'].DIRECTORY_SEPARATOR );
+    
+    //    if ( is_dir( $app . $env['layout_folder'] ) )
+    //      $request->set_layout_path( $app . $env['layout_folder'].DIRECTORY_SEPARATOR );
+    //    else
+    //      $request->set_layout_path( $env['layout_folder'].DIRECTORY_SEPARATOR );
+    
+    
   }
   
 }
