@@ -929,12 +929,18 @@ class Model {
     if (empty($this->table))
       return;
     
+    if (!(isset($db->tables)))
+      $db->tables = $db->get_tables();
+
+    if ( ( in_array( $this->table, $db->tables ) ) ) {
+    
     $fields = $db->get_fields( $this->table );
     foreach ( $this->field_array as $field => $data_type ) {
       if ( !( array_key_exists( $field, $fields ) ) ) {
         $db->add_field( $this->table, $field, $data_type );
       }
     }
+  }
     #if ( !( isset( $this->primary_key ))) {
     # if (isset($fields[$this->table."_primary_key"]))
     #    $this->set_primary_key( $fields[$this->table."_primary_key"] );

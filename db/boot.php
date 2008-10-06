@@ -285,8 +285,9 @@ if ( $db->just_get_objects() )
   /**
    * connect pre-plugin routes
    */
-  
-$request->connect( 'migrate' );
+
+// doesn't work XXX
+//$request->connect( 'migrate' );
 
 
   /**
