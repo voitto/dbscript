@@ -2,7 +2,7 @@
 
   /** 
    * dbscript -- restful openid framework
-   * @version 0.6.0 -- 2-October-2008
+   * @version 0.6.0 -- 10-October-2008
    * @author Brian Hendrickson <brian@dbscript.net>
    * @link http://dbscript.net/
    * @copyright Copyright 2008 Brian Hendrickson
@@ -970,8 +970,34 @@ function render_partial( $template ) {
 
 function add_action( $act, $func ) {
   //admin_head, photos_head
-  if (function_exists($func))
+  if ($act == 'init')
+    return;
+  if (!is_array($func) && function_exists($func))
     before_filter( $func, $act );
+  return false;
+}
+
+function add_options_page($label1, $label2, $level, $parent, $arr ) {
+
+  if (!is_array($arr) && function_exists($arr)) {
+    
+  }
+
+  //  		add_options_page(
+  //			__('Twitter Tools Options', 'twitter-tools')
+  //			, __('Twitter Tools', 'twitter-tools')
+  //			, 10
+  //			, basename(__FILE__)
+  //			, 'aktt_options_form'
+  //		);  
+    //  		add_options_page(
+  //			__('Twitter Tools Options', 'twitter-tools')
+  //			, __('Twitter Tools', 'twitter-tools')
+  //			, 10
+  //			, basename(__FILE__)
+  //			, 'aktt_options_form'
+  //		);
+  
   return false;
 }
 
@@ -1153,7 +1179,28 @@ function db_include( $file ) {
 }
 
 
-function wp_plugin_include( $file ) {
+function wp_plugin_include( $file, $basedir ) {
+  $wp_plugins = "wp-content" . DIRECTORY_SEPARATOR . "plugins" . DIRECTORY_SEPARATOR . $file;
+  if (is_dir($wp_plugins)) {
+    $startfile = $wp_plugins.DIRECTORY_SEPARATOR.$file.".php";
+    if (is_file($startfile)) {
+      require_once $startfile;
+      return;
+    }
+    $startfile = $wp_plugins.DIRECTORY_SEPARATOR.str_replace('wordpress','wp',$file).".php";
+    if (is_file($startfile)) {
+      require_once $startfile;
+      return;
+    }
+    $file = str_replace('-','_',$file);
+    $startfile = $wp_plugins.DIRECTORY_SEPARATOR.str_replace('wordpress','wp',$file).".php";
+    if (is_file($startfile)) {
+      require_once $startfile;
+      return;
+    }
+  }
+
+  
   $wp_plugins = "wp-plugins" . DIRECTORY_SEPARATOR . "plugins" . DIRECTORY_SEPARATOR . "enabled";
   if (is_array($file)) {
     foreach($file as $f) {
@@ -2138,7 +2185,13 @@ function ajax_put_field( &$model, &$rec ) {
   
   if (count($fieldsarr) == 1) {
     list($field,$type) = each($fieldsarr);
-    echo $rec->$field;
+    if (strpos('password',$field)) {
+      $chars = split('',$rec->$field);
+      foreach($chars as $c)
+        echo "*";
+    } else {
+      echo $rec->$field;
+    }
     exit;
   }
   
@@ -2228,7 +2281,10 @@ function get_app_id() {
   global $request;
   
   if (!($request->resource == 'identities'))
-    return false;
+    if (get_profile_id())
+      return get_profile_id();
+    else
+      return false;
   
   if ($request->id > 0)
     return $request->id;
@@ -2269,10 +2325,23 @@ function load_apps() {
 
 function app_init($appname) {
   
+  $startfile = $appname . DIRECTORY_SEPARATOR . $appname . ".php";
+  if (is_file($startfile))
+    require_once $startfile;
+  
+  $pluginsdir = $appname . DIRECTORY_SEPARATOR . 'plugins';
+  if (is_dir($pluginsdir)) {
+    $GLOBALS['PATH']['app_plugins'][] = $pluginsdir;
+    $startfile = $pluginsdir.DIRECTORY_SEPARATOR.$appname.".php";
+    if (is_file($startfile))
+      require_once $startfile;
+  }
+    
+  load_plugin( 'twitter_notice' );
+  
   $events = array(
     'admin_head'   => 'head',
     'admin_menu'   => 'menu',
-    'init'         => 'init',
     'wp_head'      => 'head',
     'publish_post' => 'post',
     'the_content'  => 'show'
@@ -2281,6 +2350,10 @@ function app_init($appname) {
   foreach( $events as $wpevent=>$dbevent )
     if (function_exists($appname.'_'.$dbevent))
       add_action( $wpevent, $appname.'_'.$dbevent);
+  
+  if (function_exists($appname."_init"))
+    before_filter( $appname."_init", 'init' );
+
   
 }
 

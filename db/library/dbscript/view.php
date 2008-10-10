@@ -2,7 +2,7 @@
 
   /** 
    * dbscript -- restful openid framework
-   * @version 0.6.0 -- 2-October-2008
+   * @version 0.6.0 -- 10-October-2008
    * @author Brian Hendrickson <brian@dbscript.net>
    * @link http://dbscript.net/
    * @copyright Copyright 2008 Brian Hendrickson
@@ -19,7 +19,7 @@
    * @package dbscript
    * @author Brian Hendrickson <brian@dbscript.net>
    * @access public
-   * @version 0.6.0 -- 2-October-2008
+   * @version 0.6.0 -- 10-October-2008
    */
 
 class View {
@@ -56,12 +56,8 @@ class View {
     else
       $this->named_vars['resource'] = false;
     $this->controller = $request->controller;
-
-
-    load_apps();
     
-
-
+    load_apps();
     
     $controller_path = controller_path();
     // check for a controller file in controllers/[resource].php
@@ -162,7 +158,7 @@ class View {
         
       }
       
-    } else {
+    } elseif ( !( in_array( 'partial', $request->activeroute->patterns, true )) ) {
       
       // layout_template_not_exists
       

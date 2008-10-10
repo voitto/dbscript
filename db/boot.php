@@ -2,7 +2,7 @@
    
   /** 
    * dbscript -- restful openid framework
-   * @version 0.6.0 -- 2-October-2008
+   * @version 0.6.0 -- 10-October-2008
    * @author Brian Hendrickson <brian@dbscript.net>
    * @link http://dbscript.net/
    * @copyright Copyright 2008 Brian Hendrickson
@@ -46,7 +46,7 @@
    Version 0.5.0, 12-August-2008
      new templates: vcard, hcard, ics, rdf, json, atom
    
-   Version 0.6.0, 2-October-2008
+   Version 0.6.0, 10-October-2008
      apps, openappstore
    
    */

@@ -2,7 +2,7 @@
 
   /** 
    * dbscript -- restful openid framework
-   * @version 0.6.0 -- 2-October-2008
+   * @version 0.6.0 -- 10-October-2008
    * @author Brian Hendrickson <brian@dbscript.net>
    * @link http://dbscript.net/
    * @copyright Copyright 2008 Brian Hendrickson
@@ -47,7 +47,7 @@
    * @package dbscript
    * @author Brian Hendrickson <brian@dbscript.net>
    * @access public
-   * @version 0.6.0 -- 2-October-2008
+   * @version 0.6.0 -- 10-October-2008
    */
 
 class Model {
@@ -452,7 +452,8 @@ class Model {
   function register( $table ) {
     trigger_before('register',$this,$this);
     global $db;
-    $this->table = $table;
+    if (!(isset($this->table)))
+      $this->table = $table;
     if (!(isset($this->access_list)))
       $this->access_list = array();
     if (!(isset($this->relations)))
