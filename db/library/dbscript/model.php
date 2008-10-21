@@ -2,7 +2,7 @@
 
   /** 
    * dbscript -- restful openid framework
-   * @version 0.6.0 -- 10-October-2008
+   * @version 0.6.0 -- 22-October-2008
    * @author Brian Hendrickson <brian@dbscript.net>
    * @link http://dbscript.net/
    * @copyright Copyright 2008 Brian Hendrickson
@@ -47,7 +47,7 @@
    * @package dbscript
    * @author Brian Hendrickson <brian@dbscript.net>
    * @access public
-   * @version 0.6.0 -- 10-October-2008
+   * @version 0.6.0 -- 22-October-2008
    */
 
 class Model {
@@ -195,6 +195,16 @@ class Model {
       }
       // save
       
+      if ($table != $this->table) {
+        $relfield = strtolower(classify($this->table))."_id";
+        if (isset($mdl->field_array[$relfield])) {
+          if ($req->params['id'] > 0) {
+            $rec->set_value($relfield,$req->params['id']);
+          }
+        }
+      }
+      
+      
       $result = $rec->save_changes();
       
       if ( !$result )
@@ -220,7 +230,7 @@ class Model {
             $rec->save_changes();
           }
         }
-        if (isset($rec->id)) {
+        if (($rec->table == $this->table) && isset($rec->id)) {
           $req->set_param( 'id', $rec->id );
           $req->id = $rec->id;
           $Category =& $db->model('Category');

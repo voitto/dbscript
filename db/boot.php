@@ -2,7 +2,7 @@
    
   /** 
    * dbscript -- restful openid framework
-   * @version 0.6.0 -- 10-October-2008
+   * @version 0.6.0 -- 22-October-2008
    * @author Brian Hendrickson <brian@dbscript.net>
    * @link http://dbscript.net/
    * @copyright Copyright 2008 Brian Hendrickson
@@ -46,7 +46,7 @@
    Version 0.5.0, 12-August-2008
      new templates: vcard, hcard, ics, rdf, json, atom
    
-   Version 0.6.0, 10-October-2008
+   Version 0.6.0, 22-October-2008
      apps, openappstore
    
    */
@@ -179,7 +179,9 @@ if ( file_exists( $app . 'config.yml' ) ) {
   $env = array('app_folder'=>'app');
 }
 
+
 // if app folder exists, re-config for the app
+
 if (is_dir( $env['app_folder'] )) {
   $app = $env['app_folder'] . DIRECTORY_SEPARATOR;
   $GLOBALS['PATH']['app'] = $app;
@@ -193,6 +195,9 @@ if (is_dir( $env['app_folder'] )) {
     $GLOBALS['PATH']['plugins'] = $app . 'plugins' . DIRECTORY_SEPARATOR;
 }
 
+
+// debug mode
+
 if ($env['debug_enabled']) {
   ini_set('display_errors','1');
   ini_set('display_startup_errors','1');
@@ -202,29 +207,34 @@ if ($env['debug_enabled']) {
 }
 
 
+// set up wp-config folder
 
-
-
-$content_config = 'content'.DIRECTORY_SEPARATOR.'config'.DIRECTORY_SEPARATOR.'config.yml';
+$content_config = 'wp-content'.DIRECTORY_SEPARATOR.'config'.DIRECTORY_SEPARATOR.'config.yml';
 
 if (file_exists( $content_config )) {
   
-  // if    exists /content/config/config.yml
-  // then  use /content
+  // if    exists /wp-content/config/config.yml
+  // then  use /wp-content
   
-  // theme MUST be present in /content/themes
+  // theme MUST be present in /wp-content/themes
   
-  // plugins from /content/plugins will take precedent
+  // plugins from /wp-content/plugins will take precedent
   // todo wp-plugins not supported yet in this plugins folder
   
   extract( $loader->load( file_get_contents( $content_config )));
   extract( $$env['enable_db'] );
   
-  $GLOBALS['PATH']['content_plugins'] = 'content'.DIRECTORY_SEPARATOR.'plugins'.DIRECTORY_SEPARATOR;
-  $GLOBALS['PATH']['themes'] = "content".DIRECTORY_SEPARATOR."themes".DIRECTORY_SEPARATOR;
-  
 }
 
+
+$wp_theme = "wp-content".DIRECTORY_SEPARATOR."themes".DIRECTORY_SEPARATOR.$env['theme'];
+
+if ((file_exists($wp_theme))) {
+  $GLOBALS['PATH']['content_plugins'] = 'wp-content'.DIRECTORY_SEPARATOR.'plugins'.DIRECTORY_SEPARATOR;
+  $GLOBALS['PATH']['themes'] = "wp-content".DIRECTORY_SEPARATOR."themes".DIRECTORY_SEPARATOR;
+} else {
+  $GLOBALS['PATH']['themes'] = $request->template_path . 'wp-themes' . DIRECTORY_SEPARATOR;
+}
 
 // set up the content-negotiation template paths
 
@@ -239,10 +249,6 @@ else
   $request->set_layout_path( $env['layout_folder'].DIRECTORY_SEPARATOR );
 
 
-// if not using /content, set the wp-theme location
-
-if (!file_exists( $content_config ))
-  $GLOBALS['PATH']['themes'] = $request->template_path . 'wp-themes' . DIRECTORY_SEPARATOR;
 
 
 

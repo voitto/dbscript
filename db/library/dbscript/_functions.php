@@ -2,7 +2,7 @@
 
   /** 
    * dbscript -- restful openid framework
-   * @version 0.6.0 -- 10-October-2008
+   * @version 0.6.0 -- 22-October-2008
    * @author Brian Hendrickson <brian@dbscript.net>
    * @link http://dbscript.net/
    * @copyright Copyright 2008 Brian Hendrickson
@@ -1019,7 +1019,10 @@ function render_theme( $theme ) {
   global $wpdb, $wp_query, $post, $limit_max, $limit_offset, $comments;
   global $req, $wp_rewrite, $wp_version, $openid, $user_identity, $logic;
   global $submenu;
-  
+  global $comment_author; 
+global $comment_author_email;
+global $comment_author_url;
+
   $folder = $GLOBALS['PATH']['themes'] . $theme . DIRECTORY_SEPARATOR;
   
   add_include_path($folder);
@@ -1507,12 +1510,46 @@ function can_read( $resource ) {
 
 function can_edit( $post ) {
   global $db;
-  $p = get_profile();
+  $pid = get_person_id();
   $e = $post->FirstChild('entries');
   $m =& $db->get_table($post->table);
-  return (($p->id == $e->person_id) || $m->can_superuser($post->table));
+  return (($pid == $e->person_id) || $m->can_superuser($post->table));
 }
 
+function owner_of( &$obj ) {
+  
+  global $db;
+  
+  $Person =& $db->model('Person');
+  
+  if (isset($obj->entry_id)) {
+    
+    // it's a Record
+    
+    $Entry =& $db->model('Entry');
+    
+    $e = $Entry->find($obj->entry_id);
+    
+    $p = $Person->find($e->person_id);
+    
+  } else {
+    
+    // it's an Entry
+    
+    $p = $Person->find($obj->person_id);
+    
+  }
+  
+  
+  if ($p) {
+    $i = $p->FirstChild('identities');
+    if ($i)
+      return $i;
+  }
+  
+  return false;
+  
+}
 
   /**
    * get_profile
@@ -2286,6 +2323,9 @@ function get_app_id() {
     else
       return false;
   
+  // looking some profile page
+  // load its apps
+  
   if ($request->id > 0)
     return $request->id;
   elseif (get_profile_id())
@@ -2314,7 +2354,7 @@ function load_apps() {
   
   while ($s = $i->NextChild('settings')){
     $s = $Setting->find($s->id);
-    if ($s->name = 'app')
+    if ($s->name == 'app')
       app_init( $s->value );
   }
   
@@ -2337,8 +2377,6 @@ function app_init($appname) {
       require_once $startfile;
   }
     
-  load_plugin( 'twitter_notice' );
-  
   $events = array(
     'admin_head'   => 'head',
     'admin_menu'   => 'menu',

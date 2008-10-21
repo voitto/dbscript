@@ -2,7 +2,7 @@
 
   /** 
    * dbscript -- restful openid framework
-   * @version 0.6.0 -- 10-October-2008
+   * @version 0.6.0 -- 22-October-2008
    * @author Brian Hendrickson <brian@dbscript.net>
    * @link http://dbscript.net/
    * @copyright Copyright 2008 Brian Hendrickson
@@ -30,7 +30,7 @@
    * @package dbscript
    * @author Brian Hendrickson <brian@dbscript.net>
    * @access public
-   * @version 0.6.0 -- 10-October-2008
+   * @version 0.6.0 -- 22-October-2008
    */
 
 class RecordSet {
