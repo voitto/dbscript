@@ -39,6 +39,8 @@ production:
 env:
   
   site_title: 
+  site_subtitle: 
+  site_description: 
   
   theme: 
   
@@ -48,6 +50,11 @@ env:
   enable_db: development
   
   goes: introspection
+  
+  apps:
+    - twitter
+    - identica
+    - photos
   
   authentication: email
   
@@ -60,6 +67,7 @@ env:
     - ping
     - omb
     - omb_notice
+    - sms_notice
     - email_notice
     - wp
   
@@ -85,29 +93,26 @@ env:
   
   xrds_services:
     oauth:
-        type: 
-        uri: 
-        namespace_id: oauth
-        namespace_uri: 
-        priority: 10
-        local_id_handler: 
-    openid:
-        type: 
-        uri: 
+        type: http://specs.openid.net/auth/2.0/server
+        uri: http://endpoint.example.net
         namespace_id: openid
         namespace_uri: http://openid.net/xmlns/1.0
         priority: 10
-        local_id_handler: 
+        local_id_handler: http://example.com
   
   awsAccessKey: 
   awsSecretKey: 
   awsBucket: 
   
+  zeepAccessKey: 
+  zeepSecretKey: 
+  zeepUrl: https://api.zeepmobile.com/messaging/2008-07-14/send_message
+  
   ldap_server: 
   ldap_context: 
   ldap_user_field: 
   
-  ping_server: 
+  ping_server: http://dejafeed.com/?submit
   
   blocks:
     -categories
@@ -182,7 +187,7 @@ env:
       qs       : "0.000"
       type     : text/xml
       encoding : null
-      charset  : utf-8w
+      charset  : utf-8
       language : en
       size     : 1500
     - 8:
