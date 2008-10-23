@@ -1,6 +1,7 @@
 <?php
 
 
+
 function validate_identities_photo( $value ) {
   if (!(is_upload('identities','photo')))
     return true;
@@ -10,7 +11,7 @@ function validate_identities_photo( $value ) {
       unlink($_FILES['identity']['tmp_name']['photo']);
     trigger_error( "That photo is too big. Please find one that is smaller than 400K.", E_USER_ERROR );
   }
-  if (!in_string("JpG",$_FILES['identity']['name']['photo'],1))
+  if (!is_jpg($_FILES['identity']['tmp_name']['photo']))
     trigger_error( "Sorry for the trouble, but your photo must be a JPG file.", E_USER_ERROR );
   return true;
 }
@@ -103,23 +104,42 @@ function post( &$vars ) {
 
 function put( &$vars ) {
   extract( $vars );
-  $request->params['identity']['nickname'] = strtolower($request->params['identity']['nickname']);
-  $Identity->validates_uniqueness_of( 'nickname' );
+  
+  $nick = strtolower($request->params['identity']['nickname']);
+  
+  $request->set_param( array( 'identity', 'nickname' ), $nick );
+  
+  if ($profile->nickname == $nick) {
+    // nickname did not change
+  } else {
+    // if post_notice is set it's a remote user and can share a nickname with a local user
+    $sql = "SELECT nickname FROM identities WHERE nickname LIKE '".$db->escape_string($nick)."' AND (post_notice = '' OR post_notice IS NULL)";
+    $result = $db->get_result( $sql );
+    if ($db->num_rows($result) > 0)
+      trigger_error( 'Sorry, that nickname is already being used.', E_USER_ERROR );
+  }
   
   if (strpos($request->params['identity']['url'], 'http') === false)
     $request->params['identity']['url'] = 'http://'.$request->params['identity']['url'];
   
   $resource->update_from_post( $request );
+  
   $rec = $Identity->find($request->id);
   
-  $sql = "SELECT photo FROM identities WHERE id = ".$request->id;
+  $sql = "SELECT photo FROM identities WHERE id = ".$db->escape_string($request->id);
   $result = $db->get_result($sql);
+  
   if ($blobval = $db->result_value($result,0,"photo"))
     $rec->set_value( 'avatar',  $request->url_for(array('resource'=>"_".$rec->id)) . ".jpg" );
   else
     $rec->set_value( 'avatar',  '' );
+  
   $rec->set_value( 'profile', $request->url_for(array('resource'=>"_".$rec->id)));
+  $rec->set_value( 'profile_url', $request->url_for(array('resource'=>"".$rec->nickname)));
   $rec->save_changes();
+  
+  broadcast_omb_profile_update();
+  
   header_status( '200 OK' );
   redirect_to( $request->url_for( array(
     'resource'=>'posts',
@@ -188,8 +208,13 @@ function _entry( &$vars ) {
   extract( $vars );
   $Member = $collection->MoveFirst();
   $Entry = $Member->FirstChild( 'entries' );
+  $installed_apps = array();
+  while ($s = $Member->NextChild('settings')) {
+    if ($s->name == 'app')
+      $installed_apps[] = $s->value; 
+  }
   return vars(
-    array( &$collection, &$Member, &$Entry, &$profile, &$Identity, &$Subscription ),
+    array( &$collection, &$Member, &$Entry, &$profile, &$Identity, &$Subscription, &$installed_apps ),
     get_defined_vars()
   );
 }
@@ -229,6 +254,81 @@ function _edit( &$vars ) {
   );
 }
 
+function _admin( &$vars ) {
+  extract($vars);
+  global $submenu,$current_user;
+  trigger_before( 'admin_menu', $current_user, $current_user );
+  $menuitems = array();
+  $apps_list = array();
+  $i = $Identity->find(get_profile_id());
+  while ($s = $i->NextChild('settings')){
+    $s = $Setting->find($s->id);
+    $e = $s->FirstChild('entries');
+    $apps_list[] = $s->value;
+  }
+  $menuitems[$request->url_for(array(
+    'resource'=>'identities',
+    'id'=>get_profile_id(),
+    'action'=>'edit'
+    )).'/partial'] = 'Profile';
+  $menuitems[$request->url_for(array(
+    'resource'=>'identities',
+    'id'=>get_profile_id(),
+    'action'=>'subs'
+    )).'/partial'] = 'Friends';
+  $menuitems[$request->url_for(array(
+    'resource'=>'identities',
+    'id'=>get_profile_id(),
+    'action'=>'apps'
+    )).'/partial'] = 'Apps';
+  foreach ($submenu as $arr) {
+    if (in_array($arr[0][0],$apps_list))
+      $menuitems[$arr[0][4]] = $arr[0][3];
+  }
+  return vars(
+    array(&$menuitems),
+    get_defined_vars()
+  );
+}
+
+
+function _subs( &$vars ) {
+  // entry controller returns
+  // a Collection w/ 1 member entry
+  extract( $vars );
+  $Member = $collection->MoveFirst();
+  $Entry = $Member->FirstChild( 'entries' );
+  return vars(
+    array( &$collection, &$Member, &$Entry, &$profile, &$Identity, &$Subscription, &$installed_apps ),
+    get_defined_vars()
+  );
+}
+
+
+function _apps( &$vars ) {
+  // entry controller returns
+  // a Collection w/ 1 member entry
+  extract( $vars );
+  $Member = $collection->MoveFirst();
+  $Entry = $Member->FirstChild( 'entries' );
+  $curl = curl_init("http://openappstore.com/?apps/show/partial");
+  curl_setopt($curl, CURLOPT_FOLLOWLOCATION, false);
+  curl_setopt($curl, CURLOPT_HEADER, false);
+  curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+  $result = curl_exec( $curl );
+  $store = "";
+  if ($result) {
+    $store = $result;
+  }
+  //curl_close( $curl ); 
+  
+  return vars(
+    array( &$store,&$collection, &$Member, &$Entry, &$profile, &$Identity, &$Subscription, &$installed_apps ),
+    get_defined_vars()
+  );
+}
+
+
 
 function _remove( &$vars ) {
   extract( $vars );
@@ -240,14 +340,85 @@ function _remove( &$vars ) {
   );
 }
 
+function app_installer_json( &$vars ) {
+  extract($vars);
+  if (!(class_exists('Services_JSON')))
+    lib_include( 'json' );
+  $json = new Services_JSON();
+  $apps_list = array();
+  
+  if (isset($GLOBALS['PATH']['apps']))
+    foreach($GLOBALS['PATH']['apps'] as $k=>$v)
+      if ($k != 'omb')
+        $apps_list[$k] = $k;
+  
+  // apps_list = physical apps on this host
+  
+  $sources = environment('remote_sources');
+  $remote_list = array();
+  
+  // remote_list = all not-installed apps on remote sources
+  
+  foreach($sources as $name=>$url) {
+    $url = "http://".$url."&p=".urlencode($request->uri);
+    $curl = curl_init($url);
+    curl_setopt($curl, CURLOPT_FOLLOWLOCATION, true);
+    curl_setopt($curl, CURLOPT_HEADER, false);
+    curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+    $result = false;
+    $result = curl_exec( $curl );
+    if ($result) {
+      $data = unserialize($result);
+      foreach($data as $appname=>$appdata) {
+        $remote_list[$appname] = $appname;
+      }
+    }
+    curl_close( $curl );  
+  }
+  
+  $i = $Identity->find(get_app_id());
+  
+  while ($s = $i->NextChild('settings')) {
+    if ($s->name == 'app' && in_array($s->value, $apps_list))
+      $apps_list = drop_array_element($apps_list,$s->value);
+  }
+  
+  $i = $Identity->find(get_app_id());
+  
+  while ($s = $i->NextChild('settings')) {
+    if ($s->name == 'app' && in_array($s->value, $remote_list))
+      $remote_list = drop_array_element($remote_list,$s->value);
+  }
+  
+  $all_apps = array_merge($apps_list,$remote_list);
+  
+  header( "Content-Type: application/javascript" );
+  
+  print $json->encode($all_apps);
+  
+  exit;
+}
 
-function test_get( &$vars ) {
+
+function installed_apps_json( &$vars ) {
+  extract($vars);
+  if (!(class_exists('Services_JSON')))
+    lib_include( 'json' );
+  $json = new Services_JSON();
+  $apps_list = array();
+  $i = $Identity->find(get_profile_id());
+  while ($s = $i->NextChild('settings')){
+    if ($s->name == 'app') {
+      $s = $Setting->find($s->id);
+      $e = $s->FirstChild('entries');
+      $apps_list[$e->etag] = $s->value;
+    }
+  }
   
-  # get( array( 'index', 'id' => $collection->id ));
-  # assert_response( 200 );
-  # assert_template( 'index' );
-  # assert_equal( get(), assigns( $collection ) );
+  header( "Content-Type: application/javascript" );
   
+  print $json->encode($apps_list);
+  exit;
 }
 
 

@@ -1,66 +1,13 @@
 <?php
 
-// dbscript
-global $request, $db;
 
-// wordpress
-global $blogdata, $optiondata, $current_user, $user_login, $userdata;
-global $user_level, $user_ID, $user_email, $user_url, $user_pass_md5;
-global $wpdb, $wp_query, $post, $limit_max, $limit_offset, $comments;
-global $req, $wp_rewrite, $wp_version, $openid, $user_identity, $logic;
+function allowed_tags() {
+  return true;
+}
 
-// added the following line to ParanoidHTTPFetcher line 171
-
-// curl_setopt($c, CURLOPT_SSL_VERIFYPEER, false);
-
-require_once dirname(__FILE__).DIRECTORY_SEPARATOR.'wp-plugins'.DIRECTORY_SEPARATOR.'wp-config.php';
-
-$db->create_openid_tables();
-
-$blogdata = array(
-  'name'=>'',
-  'description'=>'',
-  'wpurl'=>$request->base,
-  'url'=>$request->base,
-  'atom_url'=>$request->base."?posts.atom",
-  'rss_url'=>$request->base."?posts.rss",
-  'rss2_url'=>$request->base."?posts.rss",
-  'charset'=>'',
-  'html_type'=>'',
-  'stylesheet_url'=>theme_path()."style.css",
-  'pingback_url'=>$request->base,
-  'template_url'=>theme_path()
-);
-
-$optiondata = array(
-  'xrds_simple'=>array(),
-  'oauth_services'=>array(),
-  'oauth_version'=>0.12,
-  'upload_path'=>'',
-  'oid_enable_approval'=>true,
-  'oid_enable_commentform'=>true,
-  'home'=>$request->base,
-  'comment_registration'=>true,
-  'siteurl'=>$request->base,
-  'posts_per_page'=>20,
-  'prologue_recent_projects'=>''
-);
-
-define('OBJECT', 'OBJECT', true);
-define('ARRAY_A', 'ARRAY_A', false);
-define('ARRAY_N', 'ARRAY_N', false);
-
-
-$wp_version = 2.6;
-$wpdb = new wpdb();
-$wp_query = new wpquery();
-$post = new wppost();
-$limit_max = get_option( 'posts_per_page' );
-$limit_offset = 0;
-$comments = false;
-$user_ID = false;
-$req = false;
-
+function do_action() {
+  return true;
+}
 
 class wpdb {
   
@@ -165,6 +112,9 @@ class wpdb {
   }
 
 
+
+
+
 /**
    * Return an entire result set from the database
    * @param string $query (can also be null to pull from the cache)
@@ -213,8 +163,8 @@ class wpdb {
     
     if ( preg_match("/^\\s*(delete) /i",$query) )
       $query = str_replace("LIMIT 1","",$query);
-
-    if ( preg_match("/^\\s*(replace into) /i",$query) )
+    
+    if ( class_exists('PostgreSQL') && preg_match("/^\\s*(replace into) /i",$query) )
       return;
     
     $this->result = $db->get_result($query);
@@ -243,30 +193,62 @@ class wpdb {
     }
     return $return_val;
   }
+}
 
+function get_users_of_blog($id="") {
+  global $wpdb;
+  $users = array();
+  return $users;
+}
 
+function add_submenu_page( $up,$page,$menu,$access,$file,$func='',$url='' ) {
+	global $submenu;
+	if (!(is_array($submenu)))
+	  $submenu = array();
+  if (!(is_array($submenu[$up])))
+    $submenu[$up] = array();
+	$submenu[$up][] = array( 
+	  $menu,
+	  $access,
+	  $file,
+	  $page,
+	  $url
+	);
+	$hook = preg_replace('!\.php!', '', $page );
+	if (!empty ( $func ) && !empty ( $hook ))
+		add_action( $hook, $func );
+	return $hook;
+}
+
+function add_management_page( $page,$menu,$access,$file,$func='',$url='' ) {
+	return add_submenu_page( $page, $page, $menu, $access, $file, $func, $url );
 }
 
 function get_bloginfo( $var ) {
   global $blogdata;
+  if (in_array($var,array('wpurl')))
+    if (isset($blogdata[$var]))
+      if ("/" == substr($blogdata[$var],-1))
+        return substr($blogdata[$var],0,-1);
   if (isset($blogdata[$var]))
     return $blogdata[$var];
   return "";
 } 
 
 function add_option( $opt, $newval ) {
-  global $optiondata;
-  $optiondata[$opt] = $newval;
+  update_option($opt,$newval);
 }
 
-
-class wppost {
+if (!(class_exists('WpPost'))) {
+class WpPost {
   var $post_password = "";
   var $comment_status = "open";
-  function wppost() {
+  function WpPost() {
   }
 }
+}
 
+if (!(class_exists('wpcomment'))) {
 class wpcomment {
   var $user_id = 0;
   var $comment_author_email = "";
@@ -274,9 +256,27 @@ class wpcomment {
   function wpcomment() {
   }
 }
+}
 
 function update_option( $opt, $newval ) {
   global $optiondata;
+  if (isset($optiondata[$opt])) {
+    if ($optiondata[$opt] == $newval)
+      return;
+  }
+  global $db;
+  $Setting =& $db->model('Setting');
+  $s = $Setting->find_by(array('name'=>$opt,'profile_id'=>get_profile_id()));
+  if (!$s) {
+    $s = $Setting->base();
+    $s->set_value('profile_id',get_profile_id());
+    $s->set_value('name',$opt);
+  }
+  if (is_array($newval))
+    $s->set_value('value',serialize($newval));
+  else
+    $s->set_value('value',$newval);
+  $s->save_changes();
   $optiondata[$opt] = $newval;
 }
 
@@ -338,7 +338,7 @@ class WP_User {
       $profile = get_profile($uid);
       $this->first_name = $profile->nickname;
     }
-  
+    
   }
   
   function user_login() {
@@ -359,12 +359,21 @@ class dbfield {
   }
 }
 
-class wpquery {
+class WP_Query {
   var $in_the_loop = false;
   function get_queried_object() {
     return array();
   }
-  function wpquery() {
+  function WP_Query() {
+  }
+  function get() {
+    return array();
+  }
+  function have_posts() {
+    return have_posts();
+  }
+  function the_post() {
+    return the_post();
   }
 }
 
@@ -373,12 +382,14 @@ class wp_rewrite {
   }
 }
 
+if (!(class_exists('wptag'))) {
 class wptag {
   var $term_id = 0;
   var $count = 0;
   var $name = "";
   function wptag() {
   }
+}
 }
 
 function auth_redirect() {
@@ -399,6 +410,14 @@ function register_deactivation_hook() {
 
 function add_filter() {
   
+}
+
+function is_admin() {
+  return false;
+}
+
+
+function load_plugin_textdomain($dom,$path=false) {
 }
 
 function get_currentuserinfo() {
@@ -427,20 +446,27 @@ function get_currentuserinfo() {
 
 
 function bloginfo( $attr ) {
-  global $blogdata;
-  $data = $blogdata[$attr];
-  if (environment('theme') == 'prologue-theme' && $attr == 'url') {
-    echo $blogdata[$attr]."?posts";
-  } elseif (strstr($data,"http") && "/" == substr($blogdata[$attr],-1)) {
-    echo substr($blogdata[$attr],0,-1);
-  } else {
-    echo $blogdata[$attr];
-  }
+  echo get_bloginfo($attr);
 }
 
 function get_option( $opt ) {
   global $optiondata;
-  return $optiondata[$opt];
+  
+  if (!isset($optiondata[$opt])){
+    global $db;
+    $Setting =& $db->model('Setting');
+    $s = $Setting->find_by(array('name'=>$opt,'profile_id'=>get_profile_id()));
+    if ($s)
+      return $s->value;
+    return "";
+  }
+    
+  $data = $optiondata[$opt];
+  
+  if (strstr($data,"http") && "/" == substr($data,-1))
+    $data = substr($data,0,-1);
+  
+  return $data;
 }
 
 function get_userdata( $user_id ) {
@@ -477,7 +503,21 @@ function is_user_logged_in() {
 function wp_clearcookie() {
   
 }
-
+ function timer_stop(){
+ return;
+ }
+function the_title_attribute() {
+  the_title();
+}
+function get_num_queries() {
+  return 0;
+}
+function wp_meta() {
+  echo "";
+}
+function trackback_rdf() {
+  echo "";
+}
 function wp_setcookie( $userlogin, $md5pass, $var1 = true, $var2 = '', $var3 = '', $var4 = true ) {
   
 }
@@ -532,22 +572,40 @@ function wp_nonce_url( $var, $var2 ) {
   return $var;
 }
 
-function wp_enqueue_script( $file ) {
-  require_once $file;
+function wp_print_scripts( $scripts = false ) {
+  if (is_array($scripts)) {
+    //
+  }
+}
+
+function wp_enqueue_script( $file1,$file2=NULL ) {
+  if (file_exists($file1))
+    require_once $file1;
+  if (!(NULL == $file2))
+    if (file_exists($file2))
+      require_once $file2;
 }
 
 function wp_title() {
-  echo environment('site_title');
+  echo "";
 }
 
 function wp_head() {
     global $request;
+    global $current_user;
+    
+    //trigger_before( 'admin_head', $current_user, $current_user );
+    
     if (isset($request->resource) && $request->resource == 'identities' && $request->id > 0) {
+      
+      // headers for a profile page
+      
       echo '<meta http-equiv="X-XRDS-Location" content="'.$request->uri.'.xrds" />'."\n";
       echo '<meta http-equiv="X-Yadis-Location" content="'.$request->uri.'.xrds" />'."\n";
+      
+      // need to add OpenID headers here
+      
     }
-    echo '<link rel="stylesheet" type="text/css" href="app/views/wp-themes/prologue-theme/menu.css" />'."\n";
-    echo '<script src="stuHover.js" type="text/javascript"></script>'."\n";
 }
 
 function wp_register_sidebar_widget( $var1, $var2, $var3 ) {
@@ -590,8 +648,18 @@ function wp_insert_post( $arr ) {
   return false;
 }
 
-function wp_list_cats() {
+function wp_list_bookmarks() {
   echo "";
+}
+
+function wp_list_cats() {
+  global $request;
+  $blocks = environment('blocks');
+  if (!empty($blocks)) {
+    foreach ($blocks as $b) {
+      echo '<li><script type="text/javascript" src="'.$request->url_for(array('resource'=>$b,'action'=>'block.js')).'"></script></li>';
+    }
+  }
 }
 
 function wp_get_current_commenter() {
@@ -608,7 +676,6 @@ function wp_get_archives($type) {
 
 function get_header() {
   global $request;
-  
   // this should be a separate filter, but it catches
   // folks who are not completely set-up and sends them
   // to the identity edit form to add a photo and nickname
@@ -623,7 +690,7 @@ function get_header() {
         'action'=>'edit'
       ));
 
-    if (($request->uri != $edit_uri) && (!isset($p->nickname) || empty($p->avatar))) {
+    if (($request->resource != 'identities' || $request->action != 'edit') && (!isset($p->nickname) || empty($p->avatar))) {
       $_SESSION['message'] = "Photo and Nickname are required.";
       redirect_to($edit_uri);
     }
@@ -633,7 +700,25 @@ function get_header() {
   
   include('header.php');
 }
+function is_page() {
+  return false;
+}
+function is_category() {
+  return false;
+}
 
+function comments_link() {
+  echo "";
+}
+function is_day() {
+  return false;
+}
+function is_month() {
+  return false;
+}
+function is_year() {
+  return false;
+}
 function get_header_image() {
   return "there-is-no-image.jpg";
 }
@@ -675,6 +760,15 @@ function get_objects_in_term( $category_id, $post_tag ) {
   return array();
 }
 
+function wp_list_pages() {
+  return array();
+}
+function next_posts_link() {
+  echo "";
+}
+function previous_posts_link() {
+  echo "";
+}
 function get_term( $category_id, $post_tag ) {
   return new wptag();
 }
@@ -688,7 +782,7 @@ function attribute_escape( $value ) {
 }
 
 function the_post() {
-  global $the_post,$response,$the_author,$the_entry;
+  global $the_post,$response,$the_author,$the_entry,$request;
   $the_post =& $response->collection->MoveNext();
   if (isset($the_post->profile_id)){
     $the_author = get_profile($the_post->profile_id);
@@ -707,14 +801,57 @@ function the_post() {
       $the_post = $Post->base();
     }
   }
+  
+
+
+  if (!empty($the_author->profile_url)) $the_author->profile = $the_author->profile_url; 
+
+  global $comment_author; 
+  global $comment_author_email;
+  global $comment_author_url;
+  
+  $comment_author = $the_author->nickname;
+  $comment_author_email = $the_author->email_value;
+  $comment_author_url = $the_author->url;
+  
+    // show pretty URLs if not a Remote user
+  if (empty($the_author->post_notice)) $the_author->profile = $request->url_for(array('resource'=>$the_author->nickname));
+
   return "";
 }
-
+function get_links() {
+  echo "";
+}
+function the_excerpt() {
+  echo "";
+}
+function get_post_meta() {
+  return array();
+}
+function wp_link_pages() {
+  echo "";
+}
+function the_search_query() {
+  echo "";
+}
+function comments_open() {
+  return true;
+}
+function wp_list_categories() {
+  echo "";
+}
+function post_comments_feed_link() {
+  echo "";
+}
 function the_permalink() {
   global $the_post;
   url_for(array('resource'=>'posts','id'=>$the_post->id));
 }
-
+function the_date($timestamp=false) {
+  if (!$timestamp)
+      $timestamp = time();
+  echo date( get_settings('date_format'), $timestamp );
+}
 function the_time( $format = "g:i A" ) {
   global $the_post;
   $timestamp = strtotime($the_post->created);
@@ -722,7 +859,12 @@ function the_time( $format = "g:i A" ) {
       $timestamp = time();
   echo date( $format, $timestamp );
 }
-
+function wp_loginout() {
+  echo "";
+}
+function wp_register() {
+  echo "";
+}
 function the_tags( $var1="", $var2="", $var3="" ) {
   echo "";
 }
@@ -732,16 +874,17 @@ function the_title() {
 }
 
 function prologue_get_avatar( $current_user_id, $author_email, $pixels ) {
-  global $the_author,$request;
+  global $the_author,$request,$the_post;
   $avatar = "";
   if (!empty($the_author->avatar)) {
     $avatar = $the_author->avatar;
   } else {
     $p = get_profile();
-    $avatar = $p->avatar;
+    if (!isset($the_post->id) || ($the_author->id == $p->id))
+      $avatar = $p->avatar;
   }
   if (!(empty($avatar)))
-    return '<a href="'.$request->url_for(array('resource'=>$the_author->nickname)).'"><img alt="avatar" src="' . $avatar . '" style="width:'.$pixels.'px;height:'.$pixels.'px;" class="avatar" /></a>';
+    return '<a href="'.$the_author->profile.'"><img alt="avatar" src="' . $avatar . '" style="width:'.$pixels.'px;height:'.$pixels.'px;" class="avatar" /></a>';
 }
 
 function get_the_author_email() {
@@ -773,17 +916,24 @@ function the_author_ID() {
 }
 
 function the_content( $linklabel ) {
-  global $the_post,$request;
+  global $the_post,$request,$the_author;
   $e = $the_post->FirstChild('entries');
   
   $title = $the_post->title;
   
   if (strpos($title, 'http') !== false || strpos($title, '@') !== false) {
+    $title = str_replace("\n"," ",$title);
     $expl = explode( " ", $title );
     if (is_array($expl)){
       foreach($expl as $k=>$v) {
         if (substr($v,0,1) == '@') {
-          $expl[$k] = "<a href=\"".$request->url_for(array('resource'=>''.$v))."\">@".substr($v,1)."</a>";
+          if ($the_post->local) {
+            $expl[$k] = "@<a href=\"".$request->url_for(array('resource'=>''.substr($v,1)))."\">".substr($v,1)."</a>";
+          } else {
+            $parsed = parse_url($the_author->profile);
+            $expl[$k] = "@<a href=\"".$parsed['scheme']."://".$parsed['host']."/".substr($v,1)."\">".substr($v,1)."</a>";
+          }
+          
         }
         if (substr($v,0,4) == 'http') {
           $expl[$k] = "<a href=\"".$v."\">".$v."</a>";
@@ -793,11 +943,8 @@ function the_content( $linklabel ) {
     }
   }
   
-  if ($e->content_type != 'text/html') {
-    echo "<div class='snap_preview'><p><a href=\"".$request->url_for(array('resource'=>'__'.$the_post->id))."\">".$the_post->title."</a></p></div>";
-  } else {
-    echo "<div class='snap_preview'><p>".$title."</p></div>";
-  }
+  echo "<p>".$title."</p>";
+  
 }
 
 function have_posts() {
@@ -824,7 +971,7 @@ function get_author_feed_link( $id ) {
 function the_author_posts_link( ) {
   global $the_author,$request;
   echo '<a href="';
-  echo $request->url_for(array('resource'=>$the_author->nickname));
+  echo $the_author->profile;
   echo '" title="Posts by '.$the_author->nickname.'">'.$the_author->nickname.'</a>';
 }
 
@@ -841,7 +988,7 @@ function show_prologue_nav() {
   $byid = 0;
   if (isset($request->params['byid']))
     $byid = $request->params['byid'];
-  $links['Public'] = $request->base;
+  $links['Public'] = base_url(true);
   if ($byid > 0 && $byid != $pid) {
     $i = get_profile($byid);
   } elseif ($request->resource == 'identities' && $request->id != $pid) {
@@ -856,7 +1003,10 @@ function show_prologue_nav() {
         'resource'=>'posts',
         'byid'=>$i->id,
         'page'=>1 ));
-    $links['Profile'] = $i->profile;
+    if (empty($i->post_notice))
+      $links['Profile'] = $request->url_for(array('resource'=>$i->nickname));
+    else
+      $links['Profile'] = $i->profile;
   }
   if ($pid > 0) {
     $links['Logout'] = $request->url_for('openid_logout');
@@ -898,7 +1048,43 @@ function posts_nav_link() {
   }
 
 }
-
+function is_author() {
+  return true;
+}
+function is_single() {
+  return false;
+}
+function is_attachment() {
+  return false;
+}
+function is_paged() {
+  return false;
+}
+function is_search() {
+  return false;
+}
+function is_date() {
+  return true;
+}
+function is_archive() {
+ return false;
+}
+function get_settings($opt) {
+  global $optiondata;
+  return $optiondata[$opt];
+}
+function wp_specialchars($var) {
+  return htmlspecialchars($var);
+}
+function is_home() {
+  return true;
+}
+function is_404() {
+  return false;
+}
+function load_theme_textdomain() {
+  return "";
+}
 function language_attributes() {
   echo "";
 }
@@ -923,15 +1109,12 @@ function _e($t) {
   echo $t;
 }
 
+
 function load_javascript() {
   return "";
 }
 
 function register_sidebar() {
-  return false;
-}
-
-function add_action( $act, $func ) {
   return false;
 }
 
@@ -941,7 +1124,7 @@ function add_custom_image_header( $var, $name ) {
 
 function edit_post_link( $post ) {
   global $the_post,$request;
-  if ($the_post->profile_id == get_profile_id())
+  if ($the_post->profile_id == get_profile_id() || get_profile_id() == 1)
   echo "<a href=\"".$request->url_for(array(
     'resource'  => 'posts',
     'id'        => $the_post->id,
@@ -978,11 +1161,32 @@ function comments_number() {
 }
 
 function comments_template() {
+  
+  // dbscript
+  global $request, $db;
+  
+  // wordpress
+  global $blogdata, $optiondata, $current_user, $user_login, $userdata;
+  global $user_level, $user_ID, $user_email, $user_url, $user_pass_md5;
+  global $wpdb, $wp_query, $post, $limit_max, $limit_offset, $comments;
+  global $req, $wp_rewrite, $wp_version, $openid, $user_identity, $logic;
+  global $comment_author; 
+  global $comment_author_email;
+  global $comment_author_url;
+  $user_ID = 0;
+  global $the_post;
+  $id = $the_post->id;
+  $comments = array(1);
   include('comments.php');
 }
 
+function get_template_directory() {
+  return theme_path();
+}
+
 function comment_ID() {
-  return 0;
+  global $request;
+  return $request->id;
 }
 
 function comment_author_link( ) {
@@ -1001,8 +1205,25 @@ function comment_date() {
   return "";
 }
 
+function comment_type() {
+  echo "Comment";
+}
+
 function comment_text() {
-  return "";
+  
+  global $the_post;
+global $db;
+$sql = "SELECT title from posts where parent_id = ".$the_post->id;
+
+$result = $db->get_result($sql);
+
+    while ( $row = $db->fetch_array( $result ) ) {
+  //  $id = owner_of($p);
+    //echo "<h3>".$id->nickname." said:</h3>\n";
+    echo "<p>".$row['title']."</p>\n";
+  }
+  
+  
 }
 
 function check_admin_referer( $var ) {
@@ -1014,9 +1235,6 @@ function apply_filters( $pre, $content ) {
 }
 
 function current_user_can( $action ) {
-  if ($action == 'publish_posts' && environment('theme') == 'prologue-theme') {
-    show_prologue_nav();
-  }
   global $request;
   $id = get_profile_id();
   if (isset($request->params['byid']))
@@ -1046,7 +1264,7 @@ function dynamic_sidebar() {
       echo '<script type="text/javascript" src="'.$request->url_for(array('resource'=>$b,'action'=>'block.js')).'"></script>';
     }
   }
-    echo '<a href="http://openmicroblogger.org"><img src="app/views/wp-themes/prologue-theme/omb.gif" style="border:none;" alt="openmicroblogger.org" /></a>'."\n";
+  echo '<a href="http://openmicroblogger.org"><img src="http://openmicroblogger.org/omb.gif" style="border:none;" alt="openmicroblogger.org" /></a>'."\n";
   return true;
 }
 
@@ -1054,6 +1272,9 @@ function single_tag_title( ) {
   echo "";
 }
 
+function get_categories() {
+  echo "";
+}
 
 function register_xrd($id, $type=array(), $expires=false) {
   $xrd = get_option('xrds_simple');
@@ -1072,8 +1293,119 @@ function register_xrd_service($xrd_id, $name, $content, $priority=10) {
   $xrd = get_option('xrds_simple');
   if(!is_array($xrd[$xrd_id])) register_xrd($xrd_id);
   $xrd[$xrd_id]['services'][$name] = array('priority' => $priority, 'content' => $content);
-  update_option('xrds_simple', $xrd);
+    update_option('xrds_simple', $xrd);
 }//end register_xrd_service
+
+
+
+function wp_add_options($prefix,$options) {
+  
+  foreach( $options as $optname=>$optvalue )
+    add_option( $prefix.'_'.$optname, $optvalue );
+  
+}
+
+
+
+
+
+
+
+
+
+
+// dbscript
+global $request, $db;
+
+// wordpress
+global $blogdata, $optiondata, $current_user, $user_login, $userdata;
+global $user_level, $user_ID, $user_email, $user_url, $user_pass_md5;
+global $wpdb, $wp_query, $post, $limit_max, $limit_offset, $comments;
+global $req, $wp_rewrite, $wp_version, $openid, $user_identity, $logic;
+global $submenu;
+
+global $comment_author; 
+global $comment_author_email;
+global $comment_author_url;
+
+
+// added the following line to ParanoidHTTPFetcher line 171
+
+// curl_setopt($c, CURLOPT_SSL_VERIFYPEER, false);
+
+require_once dirname(__FILE__).DIRECTORY_SEPARATOR.'wp-plugins'.DIRECTORY_SEPARATOR.'wp-config.php';
+
+$db->create_openid_tables();
+
+
+$wp_version = 2.6;
+$wpdb = new wpdb();
+$wp_query = new WP_Query();
+$post = new WpPost();
+$comments = false;
+$user_ID = get_profile_id();
+$req = false;
+
+if ($user_ID)
+  $comments = true;
+
+$blogdata = array(
+  'home'=>base_url(true),
+  'name'=>environment('site_title'),
+  'subtitle'=>environment('site_subtitle'),
+  'description'=>environment('site_description'),
+  'wpurl'=>base_url(true),
+  'url'=>base_url(true),
+  'atom_url'=>base_url(true)."?posts.atom",
+  'rss_url'=>base_url(true)."?posts.rss",
+  'rss2_url'=>base_url(true)."?posts.rss",
+  'charset'=>'',
+  'html_type'=>'',
+  'theme_url'=>theme_path(),
+  'stylesheet_url'=>theme_path()."style.css",
+  'stylesheet_directory'=>theme_path(),
+  'pingback_url'=>base_url(true),
+  'template_url'=>theme_path()
+);
+
+$optiondata = array(
+  'date_format'=>'F j, Y',
+  'gmt_offset'=>(date('Z') / 3600),
+  'xrds_simple'=>array(),
+  'oauth_services'=>array(),
+  'oauth_version'=>0.12,
+  'upload_path'=>'',
+  'oid_enable_approval'=>true,
+  'oid_enable_commentform'=>true,
+  'home'=>base_url(true),
+  'comment_registration'=>!$comments,
+  'siteurl'=>base_url(true),
+  'posts_per_page'=>20,
+  'prologue_recent_projects'=>''
+);
+
+define('OBJECT', 'OBJECT', true);
+define('ARRAY_A', 'ARRAY_A', false);
+define('ARRAY_N', 'ARRAY_N', false);
+
+
+define('TEMPLATEPATH', theme_path() );
+
+
+$limit_max = get_option( 'posts_per_page' );
+$limit_offset = 0;
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
