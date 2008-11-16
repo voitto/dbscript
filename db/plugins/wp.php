@@ -5,8 +5,49 @@ function allowed_tags() {
   return true;
 }
 
-function do_action() {
-  return true;
+function do_action($tag, $arg = '') {
+	global $wp_filter, $wp_actions;
+
+	if ( is_array($wp_actions) )
+		$wp_actions[] = $tag;
+	else
+		$wp_actions = array($tag);
+
+	$args = array();
+	
+	if ( is_array($arg) && 1 == count($arg) && is_object($arg[0]) ) // array(&$this)
+		$args[] =& $arg[0];
+	else
+		$args[] = $arg;
+	
+	for ( $a = 2; $a < func_num_args(); $a++ )
+		$args[] = func_get_arg($a);
+
+	merge_filters($tag);
+
+	if ( !isset($wp_filter[$tag]) )
+		return;
+
+	do{
+		foreach( (array) current($wp_filter[$tag]) as $the_ )
+			if ( !is_null($the_['function']) )
+				call_user_func_array($the_['function'], array_slice($args, 0, (int) $the_['accepted_args']));
+
+	} while ( next($wp_filter[$tag]) !== false );
+
+}
+
+function merge_filters($tag) {
+	global $wp_filter, $merged_filters;
+
+	if ( isset($wp_filter['all']) && is_array($wp_filter['all']) )
+		$wp_filter[$tag] = array_merge($wp_filter['all'], (array) $wp_filter[$tag]);
+
+	if ( isset($wp_filter[$tag]) ){
+		reset($wp_filter[$tag]);
+		uksort($wp_filter[$tag], "strnatcasecmp");
+	}
+	$merged_filters[ $tag ] = true;
 }
 
 class wpdb {
@@ -195,6 +236,24 @@ class wpdb {
   }
 }
 
+function get_locale() {
+	global $locale;
+
+	if (isset($locale))
+		return apply_filters( 'locale', $locale );
+
+	// WPLANG is defined in wp-config.
+	if (defined('WPLANG'))
+		$locale = WPLANG;
+
+	if (empty($locale))
+		$locale = '';
+
+	$locale = apply_filters('locale', $locale);
+
+	return $locale;
+}
+
 function get_users_of_blog($id="") {
   global $wpdb;
   $users = array();
@@ -222,6 +281,14 @@ function add_submenu_page( $up,$page,$menu,$access,$file,$func='',$url='' ) {
 
 function add_management_page( $page,$menu,$access,$file,$func='',$url='' ) {
 	return add_submenu_page( $page, $page, $menu, $access, $file, $func, $url );
+}
+
+function the_excerpt_reloaded() {
+  the_post();
+}
+
+function query_posts() {
+  // meh
 }
 
 function get_bloginfo( $var ) {
@@ -362,7 +429,15 @@ class dbfield {
 class WP_Query {
   var $in_the_loop = false;
   function get_queried_object() {
-    return array();
+    global $response;
+    $p = $response->collection->MoveNext();
+    $p->ID = $p->id;
+    $p->post_excerpt = '';
+    $p->post_content = $p->body;
+    $p->post_author = '';
+    global $response;
+    $response->collection->rewind();
+    return $p;
   }
   function WP_Query() {
   }
@@ -408,16 +483,66 @@ function register_deactivation_hook() {
   
 }
 
-function add_filter() {
-  
+function is_feed () {
+	global $wp_query;
+
+	return $wp_query->is_feed;
 }
 
 function is_admin() {
   return false;
 }
 
+function _wp_filter_build_unique_id($tag, $function, $priority = 10){
+	global $wp_filter;
 
-function load_plugin_textdomain($dom,$path=false) {
+	// If function then just skip all of the tests and not overwrite the following.
+	// Static Calling
+	if( is_string($function) )
+		return $function;
+	// Object Class Calling
+	else if(is_object($function[0]) )
+	{
+		$obj_idx = get_class($function[0]).$function[1];
+		if( is_null($function[0]->wp_filter_id) ) {
+			$count = count((array)$wp_filter[$tag][$priority]);
+			$function[0]->wp_filter_id = $count;
+			$obj_idx .= $count;
+			unset($count);
+		} else
+			$obj_idx .= $function[0]->wp_filter_id;
+		return $obj_idx;
+	}
+	else if( is_string($function[0]) )
+		return $function[0].$function[1];
+}
+
+function load_textdomain($domain, $mofile) {
+	global $l10n;
+
+	if (isset($l10n[$domain]))
+		return;
+
+	if ( is_readable($mofile))
+		$input = new CachedFileReader($mofile);
+	else
+		return;
+
+	$l10n[$domain] = new gettext_reader($input);
+}
+
+
+function load_plugin_textdomain($domain, $path = false) {
+
+	$locale = get_locale();
+	if ( empty($locale) )
+		$locale = 'en_US';
+
+	if ( false === $path )
+		$path = PLUGINDIR;
+
+	$mofile = ABSPATH . "$path/$domain-$locale.mo";
+	load_textdomain($domain, $mofile);
 }
 
 function get_currentuserinfo() {
@@ -443,7 +568,6 @@ function get_currentuserinfo() {
   
   wp_set_current_user($user->ID);
 }
-
 
 function bloginfo( $attr ) {
   echo get_bloginfo($attr);
@@ -596,6 +720,8 @@ function wp_head() {
     
     //trigger_before( 'admin_head', $current_user, $current_user );
     
+    do_action('wp_head');
+    
     if (isset($request->resource) && $request->resource == 'identities' && $request->id > 0) {
       
       // headers for a profile page
@@ -701,7 +827,7 @@ function get_header() {
   include('header.php');
 }
 function is_page() {
-  return false;
+  return true;
 }
 function is_category() {
   return false;
@@ -784,28 +910,48 @@ function attribute_escape( $value ) {
 function the_post() {
   global $the_post,$response,$the_author,$the_entry,$request;
   $the_post =& $response->collection->MoveNext();
-  if (isset($the_post->profile_id)){
+  if (isset($the_post->profile_id) && $the_post->table == 'posts'){
     $the_author = get_profile($the_post->profile_id);
   }else{
     global $db;
     $Identity =& $db->model('Identity');
-    if ($the_post) {
-      $the_entry = $the_post->FirstChild( 'entries' );
-      if ($the_entry->person_id) {
-        $the_author = $Identity->find_by('entries.person_id',$the_entry->person_id);
-      } else {
-        $the_author = $Identity->base();
+    if ($the_post && $the_post->table == 'ak_twitter') {
+
+      $TwitterUser =& $db->model('TwitterUser');
+      $the_author = $TwitterUser->find_by('twitter_id',$the_post->profile_id);
+      if ($the_author) {
+        $the_author->profile_url = $the_author->url;
+        $the_author->profile = $the_author->url;
+        $the_author->nickname = $the_author->screen_name;
+        $the_author->email_value = '';
+
+        $the_author->avatar = $the_author->profile_image_url;
+        $the_author->fullname = $the_author->name;
+        $the_author->id = $the_author->twitter_id;
+
+        $the_post->local = 0;
+        $the_post->parent_id = 0;
+        $the_post->title = $the_post->tw_text;
       }
     } else {
-      $Post =& $db->model('Post');
-      $the_post = $Post->base();
+
+      if ($the_post) {
+        $the_entry = $the_post->FirstChild( 'entries' );
+        if ($the_entry && $the_entry->person_id) {
+          $the_author = owner_of($the_post);
+        } else {
+          $the_author = $Identity->base();
+        }
+      } else {
+        $Post =& $db->model('Post');
+        $the_post = $Post->base();
+        $the_author = $Identity->base();
+      }
     }
   }
   
-
-
   if (!empty($the_author->profile_url)) $the_author->profile = $the_author->profile_url; 
-
+  
   global $comment_author; 
   global $comment_author_email;
   global $comment_author_url;
@@ -816,42 +962,93 @@ function the_post() {
   
     // show pretty URLs if not a Remote user
   if (empty($the_author->post_notice)) $the_author->profile = $request->url_for(array('resource'=>$the_author->nickname));
-
+  
   return "";
 }
+
 function get_links() {
   echo "";
 }
+
 function the_excerpt() {
   echo "";
 }
-function get_post_meta() {
-  return array();
+
+function get_posts_init() {
+  global $posts;
+  $posts = array();
+  global $the_post,$response,$the_author,$the_entry,$request;
+  while (have_posts()) {
+    $p = $response->collection->MoveNext();
+    $p->ID = $p->id;
+    $p->post_excerpt = '';
+    $p->post_content = $p->body;
+    $p->post_author = '';
+    $posts[] = $p;
+  }
+  $response->collection->rewind();
 }
+
+function get_post_meta($pid=0,$field,$bool) {
+  
+  global $posts;
+  
+  if (!(is_array($posts)))
+    return '';
+
+  $mapper = array(
+    'description'    => 'body',
+    'title'          => 'title',
+    'aiosp_disable'  => '',
+    'title_tag'      => '',
+    'keywords'       => '',
+    'autometa'       => '',
+    'aiosp_disable'  => ''
+  );
+  
+  foreach($posts as $p) {
+    if ($p->ID == $pid && isset($mapper[$field])){
+      $attr = $mapper[$field];
+      if (isset($p->$attr))
+        return $p->$attr;
+    }
+  }
+  
+  return '';
+  
+}
+
 function wp_link_pages() {
   echo "";
 }
+
 function the_search_query() {
   echo "";
 }
+
 function comments_open() {
   return true;
 }
+
 function wp_list_categories() {
   echo "";
 }
+
 function post_comments_feed_link() {
   echo "";
 }
+
 function the_permalink() {
   global $the_post;
   url_for(array('resource'=>'posts','id'=>$the_post->id));
 }
+
 function the_date($timestamp=false) {
   if (!$timestamp)
       $timestamp = time();
   echo date( get_settings('date_format'), $timestamp );
 }
+
 function the_time( $format = "g:i A" ) {
   global $the_post;
   $timestamp = strtotime($the_post->created);
@@ -859,18 +1056,24 @@ function the_time( $format = "g:i A" ) {
       $timestamp = time();
   echo date( $format, $timestamp );
 }
+
 function wp_loginout() {
   echo "";
 }
+
 function wp_register() {
   echo "";
 }
+
 function the_tags( $var1="", $var2="", $var3="" ) {
   echo "";
 }
 
 function the_title() {
-  return "";
+  global $the_post;
+  if (!(environment('theme') == 'prologue-theme')) {
+     echo $the_post->title;
+  }
 }
 
 function prologue_get_avatar( $current_user_id, $author_email, $pixels ) {
@@ -892,13 +1095,31 @@ function get_the_author_email() {
   return $the_author->email_value;
 }
 
+function is_tag() {
+}
+
+function the_author_nickname() {
+  global $the_author;
+  echo $the_author->nickname;
+}
+
 function the_author() {
   global $the_author;
   echo $the_author->fullname;
 }
 
 function the_category() {
-  return "";
+  global $the_post,$db;
+  $e = $the_post->FirstChild('entries');
+  $Join =& $db->get_table('categories_entries');
+  $Join->find_by('entry_id',$e->id);
+  $Category =& $db->model('Category');
+  $comma = "";
+  while ($cj = $Join->MoveNext()) {
+    $c = $Category->find($cj->category_id);
+    echo $comma.$c->name;
+    $comma = ",";
+  }
 }
 
 function __($text) {
@@ -917,6 +1138,14 @@ function the_author_ID() {
 
 function the_content( $linklabel ) {
   global $the_post,$request,$the_author;
+  
+  if (!(environment('theme') == 'prologue-theme')) {
+    
+    echo $the_post->body;
+    return;
+    
+  }
+  
   $e = $the_post->FirstChild('entries');
   
   $title = $the_post->title;
@@ -961,7 +1190,7 @@ function have_posts() {
     return false;
   if (!$response->collection->EOF && (0 < $rows))
     return true;
-  return $response->collection->EOF;
+  return !$response->collection->EOF;
 }
 
 function get_author_feed_link( $id ) {
@@ -1075,6 +1304,9 @@ function get_settings($opt) {
 }
 function wp_specialchars($var) {
   return htmlspecialchars($var);
+}
+function make_clickable($text) {
+  return $text;
 }
 function is_home() {
   return true;
@@ -1230,8 +1462,29 @@ function check_admin_referer( $var ) {
   return false;
 }
 
-function apply_filters( $pre, $content ) {
-  return false;
+function apply_filters($tag, $string) {
+	global $wp_filter, $merged_filters;
+
+	if ( !isset( $merged_filters[ $tag ] ) )
+		merge_filters($tag);
+
+	if ( !isset($wp_filter[$tag]) )
+		return $string;
+
+	reset( $wp_filter[ $tag ] );
+
+	$args = func_get_args();
+
+	do{
+		foreach( (array) current($wp_filter[$tag]) as $the_ )
+			if ( !is_null($the_['function']) ){
+				$args[1] = $string;
+				$string = call_user_func_array($the_['function'], array_slice($args, 1, (int) $the_['accepted_args']));
+			}
+
+	} while ( next($wp_filter[$tag]) !== false );
+
+	return $string;
 }
 
 function current_user_can( $action ) {

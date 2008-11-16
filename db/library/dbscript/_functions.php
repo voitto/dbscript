@@ -683,11 +683,10 @@ function redirect_to( $param, $altparam = NULL ) {
   
   global $request;
   
-  // check for qooxdoo "POST" and bail before redirect
-  if (strstr($request->uri,"&method="))
+  if (is_ajax())
     echo "OK";
-  
-  $request->redirect_to( $param, $altparam );
+  else
+    $request->redirect_to( $param, $altparam );
   
 }
 
@@ -967,6 +966,13 @@ function render_partial( $template ) {
   $response->render_partial( $request, $template );
   
 }
+function add_filter($tag, $function_to_add, $priority = 10, $accepted_args = 1) {
+	global $wp_filter, $merged_filters;
+	$idx = _wp_filter_build_unique_id($tag, $function_to_add, $priority);
+  $wp_filter[$tag][$priority][$idx] = array('function' => $function_to_add, 'accepted_args' => $accepted_args);
+	unset( $merged_filters[ $tag ] );
+	return true;
+}
 
 function add_action( $act, $func ) {
   //admin_head, photos_head
@@ -974,6 +980,7 @@ function add_action( $act, $func ) {
     return;
   if (!is_array($func) && function_exists($func))
     before_filter( $func, $act );
+	add_filter($act, $func);
   return false;
 }
 
@@ -1020,8 +1027,8 @@ function render_theme( $theme ) {
   global $req, $wp_rewrite, $wp_version, $openid, $user_identity, $logic;
   global $submenu;
   global $comment_author; 
-global $comment_author_email;
-global $comment_author_url;
+  global $comment_author_email;
+  global $comment_author_url;
 
   $folder = $GLOBALS['PATH']['themes'] . $theme . DIRECTORY_SEPARATOR;
   
@@ -1514,6 +1521,24 @@ function can_edit( $post ) {
   $e = $post->FirstChild('entries');
   $m =& $db->get_table($post->table);
   return (($pid == $e->person_id) || $m->can_superuser($post->table));
+}
+
+function entry_for( &$obj ) {
+  
+  global $db;
+  
+  if (isset($obj->entry_id)) {
+    
+    // it's a Record with metadata
+    
+    $Entry =& $db->model('Entry');
+    
+    return $Entry->find($obj->entry_id);
+    
+  }
+  
+  return false;
+  
 }
 
 function owner_of( &$obj ) {
@@ -2394,6 +2419,19 @@ function app_init($appname) {
 
   
 }
+
+
+function array_sort($array,$key){ 
+   for ($i = 0; $i < sizeof($array); $i++) { 
+        $sort_values[$i] = $array[$i][$key]; 
+   } 
+   arsort ($sort_values); 
+   reset ($sort_values); 
+   while (list ($arr_key, $arr_val) = each ($sort_values)) { 
+          $sorted_arr[] = $array[$arr_key]; 
+   } 
+   return $sorted_arr; 
+} 
 
 
 ?>
