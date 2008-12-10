@@ -156,12 +156,20 @@ $request->connect(
   )
 
 );
-
-  // load static-file-cache and debug aspects
-include $GLOBALS['PATH']['plugins'] . 'renderer.php';
+// load static-file-cache and debug aspects
+//include $GLOBALS['PATH']['plugins'] . 'renderer.php';
 
 // this doesn't do anything because the aspect-filter was deleted XXX
-$request->routematch();
+//$request->routematch();
+
+
+$request->connect(
+  'admin',
+  array(
+    'action'=>'index',
+    'resource'=>'admin'
+  )
+);
 
 
   /**
@@ -184,16 +192,24 @@ if ( file_exists( $app . 'config.yml' ) ) {
 
 if (is_dir( $env['app_folder'] )) {
   $app = $env['app_folder'] . DIRECTORY_SEPARATOR;
-  $GLOBALS['PATH']['app'] = $app;
-  $GLOBALS['PATH']['controllers'] = $app . 'controllers' . DIRECTORY_SEPARATOR;
-  $GLOBALS['PATH']['models'] = $app . 'models' . DIRECTORY_SEPARATOR;
+  $appdir = $app;
   if ( file_exists( $app . 'config' . DIRECTORY_SEPARATOR . 'config.yml' ) ) {
     extract($loader->load(file_get_contents($app . 'config' . DIRECTORY_SEPARATOR .'config.yml')));
     extract( $$env['enable_db'] );
+    if (isset($env['boot']))
+      $appdir = $app.$env['boot'].DIRECTORY_SEPARATOR;
+    else
+      $appdir = $app.'omb'.DIRECTORY_SEPARATOR;
+    $GLOBALS['PATH']['app'] = $app;
+    $app = $appdir;
+    $GLOBALS['PATH']['controllers'] = $appdir . 'controllers' . DIRECTORY_SEPARATOR;
+    $GLOBALS['PATH']['models'] = $appdir . 'models' . DIRECTORY_SEPARATOR;
   }
-  if (is_dir( $app . 'plugins' . DIRECTORY_SEPARATOR ))
-    $GLOBALS['PATH']['plugins'] = $app . 'plugins' . DIRECTORY_SEPARATOR;
+  if (is_dir( $appdir . 'plugins' . DIRECTORY_SEPARATOR ))
+    $GLOBALS['PATH']['plugins'] = $appdir . 'plugins' . DIRECTORY_SEPARATOR;
 }
+
+
 
 
 // debug mode
@@ -379,8 +395,7 @@ $request->connect( '', array( 'resource'=>$env['goes'], 'action'=>'get' ) );
 
 $request->routematch();
 
-//print_r($request->activeroute); exit;
-
+//print_r($request->activeroute); echo '<BR><BR>'; print_r($request->params); exit;
 
 /**
  * attach functions to aspect crosscuts
@@ -421,15 +436,6 @@ function test_log_in() {
   $person_id = 1;
   set_cookie($person_id);
   $_SESSION['openid_complete'] = true;
-}
-
-
-//get_seo_plugin();
-
-function get_seo_plugin() {
-  add_action( 'wp_head', 'get_posts_init' );
-  wp_plugin_include( 'all-in-one-seo-pack' );
-  load_plugin_textdomain( 'all_in_one_seo_pack', 'wp-content/plugins/all-in-one-seo-pack' );
 }
 
 

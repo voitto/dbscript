@@ -1030,28 +1030,29 @@ function render_theme( $theme ) {
   global $comment_author_email;
   global $comment_author_url;
 
-  $folder = $GLOBALS['PATH']['themes'] . $theme . DIRECTORY_SEPARATOR;
+  $folder = $GLOBALS['PATH']['themes'] . environment('theme') . DIRECTORY_SEPARATOR;
   
   add_include_path($folder);
   
-  if (isset($request->action) && !($request->action == 'index')) {
-    get_header();
-    if ($theme == 'prologue-theme')
-      show_prologue_nav();
-    echo '<div id="main">'."\n";
-    content_for_layout();
-    echo '</div>'."\n";
-    get_footer();
-    exit;
-  }
+  global $wpmode;
   
-  if ( file_exists( $folder . "index.php" ))
-    require_once( $folder . "index.php" );
-  else
-    require_once( $folder . "index.html" );
+  $wpmode = "posts";
+  
+  if ($request->resource != 'posts' || !($request->action == 'index')) {
+    $wpmode = "other";
+    require_once( $folder . "page.php" );
+  } else {
+    if ( file_exists( $folder . "index.php" ))
+      require_once( $folder . "index.php" );
+    else
+      require_once( $folder . "index.html" );
+  }
 }
 
-function theme_path() {
+function theme_path($noslash = false) {
+  
+  global $request,$db;
+  trigger_before('theme_path', $request, $db);
   
   global $pretty_url_base;
   
@@ -1060,7 +1061,12 @@ function theme_path() {
   else
     $base = "";
   
-  return $base . $GLOBALS['PATH']['themes'] . environment('theme') . DIRECTORY_SEPARATOR;
+  $path = $base . $GLOBALS['PATH']['themes'] . environment('theme') . DIRECTORY_SEPARATOR;
+  
+  if ($noslash && "/" == substr($path,-1))
+    $path = substr($path,0,-1);
+
+  return $path;
   
 }
 
@@ -1189,7 +1195,7 @@ function db_include( $file ) {
 }
 
 
-function wp_plugin_include( $file, $basedir ) {
+function wp_plugin_include( $file, $basedir=NULL ) {
   $wp_plugins = "wp-content" . DIRECTORY_SEPARATOR . "plugins" . DIRECTORY_SEPARATOR . $file;
   if (is_dir($wp_plugins)) {
     $startfile = $wp_plugins.DIRECTORY_SEPARATOR.$file.".php";
@@ -1500,6 +1506,20 @@ function public_resource() {
   return false;
   
 }
+
+function virtual_resource() {
+  
+  global $request;
+  
+  $model = model_path() . classify($request->resource) . ".php";
+  
+  if (!file_exists($model))
+    return true;
+  
+  return false;
+  
+}
+
 
 function can_read( $resource ) {
   if (!(isset($this->access_list['read'][$resource]))) return false;
@@ -2364,7 +2384,12 @@ function get_nav_links() {
   }
   
   if ($pid > 0) {
-  
+    
+    if (member_of('administrators'))
+      $links["Site Admin"] = $request->url_for(array('resource'=>'admin'));
+    
+    $links["Write Post"] = $request->url_for(array('resource'=>'posts','action'=>'new'));
+    
     $links["Logout"] = $request->url_for("openid_logout");
   
   } else {
@@ -2403,6 +2428,14 @@ function get_app_id() {
 }
 
 
+function app_path() {
+  
+  return $GLOBALS['PATH']['app'];
+  
+}
+
+
+
 function load_apps() {
   
   // enable wp-style callback functions
@@ -2432,11 +2465,11 @@ function load_apps() {
 
 function app_init($appname) {
   
-  $startfile = $appname . DIRECTORY_SEPARATOR . $appname . ".php";
+  $startfile = app_path() . $appname . DIRECTORY_SEPARATOR . $appname . ".php";
   if (is_file($startfile))
     require_once $startfile;
   
-  $pluginsdir = $appname . DIRECTORY_SEPARATOR . 'plugins';
+  $pluginsdir = app_path() . $appname . DIRECTORY_SEPARATOR . 'plugins';
   if (is_dir($pluginsdir)) {
     $GLOBALS['PATH']['app_plugins'][] = $pluginsdir;
     $startfile = $pluginsdir.DIRECTORY_SEPARATOR.$appname.".php";
@@ -2463,14 +2496,20 @@ function app_init($appname) {
 }
 
 
-function array_sort($array,$key){ 
+function array_sort($array, $key, $max=false) 
+{ 
    for ($i = 0; $i < sizeof($array); $i++) { 
-        $sort_values[$i] = $array[$i][$key]; 
+       $sort_values[$i] = $array[$i][$key]; 
    } 
-   arsort ($sort_values); 
+   asort ($sort_values); 
    reset ($sort_values); 
    while (list ($arr_key, $arr_val) = each ($sort_values)) { 
-          $sorted_arr[] = $array[$arr_key]; 
+     if ($max) {
+       if (count($sorted_arr) < $max)
+         $sorted_arr[] = $array[$arr_key]; 
+       } else {
+         $sorted_arr[] = $array[$arr_key]; 
+       }
    } 
    return $sorted_arr; 
 } 
