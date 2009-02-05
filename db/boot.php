@@ -1,18 +1,18 @@
 <?php
    
   /** 
-   * dbscript -- restful openid framework
-   * @version 0.6.0 -- 22-October-2008
-   * @author Brian Hendrickson <brian@dbscript.net>
-   * @link http://dbscript.net/
+   * structal -- Social Media Programming Language
+   * @version 0.1.0 -- 01-January-2009
+   * @author Brian Hendrickson <brian@structal.net>
+   * @link http://structal.net/
    * @copyright Copyright 2008 Brian Hendrickson
-   * @package dbscript
+   * @package structal
    * @license http://www.opensource.org/licenses/mit-license.php MIT License
    */
    
   /**
    
-   dbscript -- restful openid framework
+   structal -- Social Media Programming Language
    Copyright (C) 2008 Brian Hendrickson
    
    This library is free software; you can redistribute it and/or
@@ -75,7 +75,7 @@ if (is_dir('db'))
 elseif (is_dir('site' . DIRECTORY_SEPARATOR . 'db' . DIRECTORY_SEPARATOR))
   $app = 'site' . DIRECTORY_SEPARATOR . 'db' . DIRECTORY_SEPARATOR;
 else
-  trigger_error( 'path to dbscript not found', E_USER_ERROR );
+  trigger_error( 'path to structal not found', E_USER_ERROR );
 
 $GLOBALS['PATH'] = array();
 $GLOBALS['PATH']['app'] = $app;
@@ -83,10 +83,10 @@ $GLOBALS['PATH']['library'] = $app . 'library' . DIRECTORY_SEPARATOR;
 $GLOBALS['PATH']['controllers'] = $app . 'controllers' . DIRECTORY_SEPARATOR;
 $GLOBALS['PATH']['models'] = $app . 'models' . DIRECTORY_SEPARATOR;
 $GLOBALS['PATH']['plugins'] = $app . 'plugins' . DIRECTORY_SEPARATOR;
-$GLOBALS['PATH']['dbscript'] = $GLOBALS['PATH']['library'] . 'dbscript' . DIRECTORY_SEPARATOR;
+$GLOBALS['PATH']['structal'] = $GLOBALS['PATH']['library'] . 'structal' . DIRECTORY_SEPARATOR;
 
   /**
-   * load dbscript minimal functions & classes
+   * load structal minimal functions & classes
    */
 
 foreach( array(
@@ -100,7 +100,7 @@ foreach( array(
     'cookie'
   ) as $module ) {
 
-  include $GLOBALS['PATH']['dbscript'] . $module . '.php';
+  include $GLOBALS['PATH']['structal'] . $module . '.php';
   
 }
 
@@ -112,7 +112,7 @@ lib_include( 'inflector' );
 
 
 error_reporting( E_ALL & ~E_NOTICE & ~E_WARNING );
-$dbscript_error_handler = set_error_handler( 'dbscript_error' );
+$structal_error_handler = set_error_handler( 'structal_error' );
 
 
   /**
@@ -273,7 +273,7 @@ else
    * connect to the database with settings from config.yml
    */
 
-  // load dbscript database support classes
+  // load structal database support classes
 db_include( array(
   'database',
   'model',

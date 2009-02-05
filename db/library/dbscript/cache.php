@@ -1,12 +1,12 @@
 <?php
 
   /** 
-   * dbscript -- restful openid framework
-   * @version 0.6.0 -- 22-October-2008
-   * @author Brian Hendrickson <brian@dbscript.net>
-   * @link http://dbscript.net/
+   * structal -- Social Media Programming Language
+   * @version 0.1.0 -- 01-January-2009
+   * @author Brian Hendrickson <brian@structal.net>
+   * @link http://structal.net/
    * @copyright Copyright 2008 Brian Hendrickson
-   * @package dbscript
+   * @package structal
    * @license http://www.opensource.org/licenses/mit-license.php MIT License
    */
 
@@ -16,12 +16,12 @@
    * cache recordset rows in a text file
    * 
    * More info...
-   * {@link http://dbscript.net/cache}
+   * {@link http://structal.net/cache}
    * 
-   * @package dbscript
+   * @package structal
    * @author Alejandro Gervasio
    * @access public
-   * @version 0.6.0 -- 22-October-2008
+   * @version 0.1.0 -- 01-January-2009
    * @todo implement
    */
 

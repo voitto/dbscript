@@ -1,12 +1,12 @@
 <?php
 
   /** 
-   * dbscript -- restful openid framework
-   * @version 0.6.0 -- 22-October-2008
-   * @author Brian Hendrickson <brian@dbscript.net>
-   * @link http://dbscript.net/
+   * structal -- Social Media Programming Language
+   * @version 0.1.0 -- 01-January-2009
+   * @author Brian Hendrickson <brian@structal.net>
+   * @link http://structal.net/
    * @copyright Copyright 2008 Brian Hendrickson
-   * @package dbscript
+   * @package structal
    * @license http://www.opensource.org/licenses/mit-license.php MIT License
    */
 
@@ -58,7 +58,7 @@ function tableize( $object ) {
    * 
    * custom Error handling per-client-type
    * 
-   * @author Brian Hendrickson <brian@dbscript.net>
+   * @author Brian Hendrickson <brian@structal.net>
    * @access public
    * @param integer $errno
    * @param string $errstr
@@ -67,17 +67,17 @@ function tableize( $object ) {
    * @todo return based on content-negotiation status
    */
 
-function dbscript_error( $errno, $errstr, $errfile, $errline ) {
+function structal_error( $errno, $errstr, $errfile, $errline ) {
   if ( !error_reporting() || $errno == 2048 )
     return;
   switch ($errno) {
     case E_USER_ERROR:
       global $request;
       $req =& $request;
-      if (isset($_GET['dbscript_xml_error_continue'])) {
+      if (isset($_GET['structal_xml_error_continue'])) {
         $xml = "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\n";
         $xml .= "<root>\n";
-        $xml .= "  <dbscript_error>Fatal error in line $errline of file $errfile<br>: $errstr</dbscript_error>\n";
+        $xml .= "  <structal_error>Fatal error in line $errline of file $errfile<br>: $errstr</structal_error>\n";
         $xml .= "</root>\n";
         print $xml;
       } elseif ($req->error) {
@@ -274,16 +274,16 @@ function library_path() {
 
 
   /**
-   * dbscript_path
+   * structal_path
    * 
-   * path to library/dbscript
+   * path to library/structal
    * 
    * @access public
    * @return string
    */
   
-function dbscript_path() {
-  return $GLOBALS['PATH']['dbscript'];
+function structal_path() {
+  return $GLOBALS['PATH']['structal'];
 }
 
 
@@ -1017,7 +1017,7 @@ function app_menu($title,$url='',$role='member') {
 
 function render_theme( $theme ) {
   
-  // dbscript
+  // structal
   global $request, $db;
   
   // wordpress
@@ -1180,7 +1180,7 @@ function content_types() {
   /**
    * db_include
    * 
-   * include a dbscript file
+   * include a structal file
    * 
    * @access public
    */
@@ -1188,9 +1188,9 @@ function content_types() {
 function db_include( $file ) {
   if (is_array($file)) {
     foreach($file as $f)
-      require_once dbscript_path() . $f . ".php";
+      require_once structal_path() . $f . ".php";
   } else {
-    require_once dbscript_path() . $file . ".php";
+    require_once structal_path() . $file . ".php";
   }  
 }
 
@@ -1286,7 +1286,7 @@ function load_plugin( $plugin ) {
   /**
    * version
    * 
-   * get dbscript version
+   * get structal version
    * 
    * @access public
    * @return string
@@ -1788,7 +1788,7 @@ function drop_array_element($array_with_elements, $key_name) {
    * $array = dictionary_parse( $file_name, true );
    * </code>
    *
-   * @author Brian Hendrickson <brian@dbscript.net>
+   * @author Brian Hendrickson <brian@structal.net>
    * @access public
    * @param string $data
    * @return array
@@ -2302,7 +2302,7 @@ function is_ajax() {
  * 
  * get a value from another table
  * 
- * @author Brian Hendrickson <brian@dbscript.net>
+ * @author Brian Hendrickson <brian@structal.net>
  * @access public
  * @param string table
  * @param string field

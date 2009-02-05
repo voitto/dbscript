@@ -1,8 +1,8 @@
 #
-#    dbscript config file - config.yml
+#    structal config file - config.yml
 #
-# author: [Brian Hendrickson, brian@dbscript.net]
-# websites: [http://dbscript.net, http://brianhendrickson.com]
+# author: [Brian Hendrickson, brian@structal.net]
+# websites: [http://structal.net, http://brianhendrickson.com]
 # copyright: (c) 2008 Brian Hendrickson
 #
 --- %YAML:1.1
@@ -45,7 +45,7 @@ env:
   theme: 
   
   remote_sources:
-    dbscript: dbscript.net/?apps
+    structal: structal.net/?apps
   
   enable_db: development
   

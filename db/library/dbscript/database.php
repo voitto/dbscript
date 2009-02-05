@@ -1,12 +1,12 @@
 <?php
 
   /** 
-   * dbscript -- restful openid framework
-   * @version 0.6.0 -- 22-October-2008
-   * @author Brian Hendrickson <brian@dbscript.net>
-   * @link http://dbscript.net/
+   * structal -- Social Media Programming Language
+   * @version 0.1.0 -- 01-January-2009
+   * @author Brian Hendrickson <brian@structal.net>
+   * @link http://structal.net/
    * @copyright Copyright 2008 Brian Hendrickson
-   * @package dbscript
+   * @package structal
    * @license http://www.opensource.org/licenses/mit-license.php MIT License
    */
 
@@ -26,12 +26,12 @@
    * </code>
    * 
    * More info...
-   * {@link http://dbscript.net/database}
+   * {@link http://structal.net/database}
    * 
-   * @package dbscript
-   * @author Brian Hendrickson <brian@dbscript.net>
+   * @package structal
+   * @author Brian Hendrickson <brian@structal.net>
    * @access public
-   * @version 0.6.0 -- 22-October-2008
+   * @version 0.1.0 -- 01-January-2009
    */
 
 class Database {
@@ -101,7 +101,7 @@ class Database {
    * 
    * return a Record object for the named table
    * 
-   * @author Brian Hendrickson <brian@dbscript.net>
+   * @author Brian Hendrickson <brian@structal.net>
    * @access public
    * @param string table
    * @return Record
@@ -127,7 +127,7 @@ class Database {
    * 
    * return a Record object from the Model's active result set
    * 
-   * @author Brian Hendrickson <brian@dbscript.net>
+   * @author Brian Hendrickson <brian@structal.net>
    * @access public
    * @param string table
    * @param string[] fields
@@ -173,7 +173,7 @@ class Database {
    * 
    * return a multi-graph RecordSet from a SQORP-formatted SQL join query
    * 
-   * @author Brian Hendrickson <brian@dbscript.net>
+   * @author Brian Hendrickson <brian@structal.net>
    * @access public
    * @param string sql
    * @return RecordSet
@@ -188,7 +188,7 @@ class Database {
    * 
    * deprecated
    * 
-   * @author Brian Hendrickson <brian@dbscript.net>
+   * @author Brian Hendrickson <brian@structal.net>
    * @access public
    * @param string[] blob_location
    * @param string content_type
@@ -214,7 +214,7 @@ class Database {
    * 
    * set the file upload size limit
    * 
-   * @author Brian Hendrickson <brian@dbscript.net>
+   * @author Brian Hendrickson <brian@structal.net>
    * @access public
    * @param integer megabytes
    */ 
@@ -228,7 +228,7 @@ class Database {
    * 
    * create a skeleton from an existing Record
    * 
-   * @author Brian Hendrickson <brian@dbscript.net>
+   * @author Brian Hendrickson <brian@structal.net>
    * @access public
    * @param Record rec
    * @return Record
@@ -253,7 +253,7 @@ class Database {
    * 
    * get a list of distinct values
    * 
-   * @author Brian Hendrickson <brian@dbscript.net>
+   * @author Brian Hendrickson <brian@structal.net>
    * @access public
    * @param string table
    * @param string field
@@ -280,7 +280,7 @@ class Database {
    * 
    * fetch a record
    * 
-   * @author Brian Hendrickson <brian@dbscript.net>
+   * @author Brian Hendrickson <brian@structal.net>
    * @access public
    * @param Record rec
    * @param integer id
@@ -305,7 +305,7 @@ class Database {
    * 
    * return the abstract type for a given native type
    * 
-   * @author Brian Hendrickson <brian@dbscript.net>
+   * @author Brian Hendrickson <brian@structal.net>
    * @access public
    * @param string raw_datatype
    * @param string
@@ -319,7 +319,7 @@ class Database {
       return $this->datatype_map[$raw_datatype];
     } else {
       if (ignore_errors()) return 'char';
-      trigger_error( "Error, the $raw_datatype datatype is not listed in dbscript's datatype map.", E_USER_NOTICE );
+      trigger_error( "Error, the $raw_datatype datatype is not listed in structal's datatype map.", E_USER_NOTICE );
     }
   }
 
@@ -329,7 +329,7 @@ class Database {
    * 
    * return the resource's data model objects in an array
    * 
-   * @author Brian Hendrickson <brian@dbscript.net>
+   * @author Brian Hendrickson <brian@structal.net>
    * @access public
    * @return Model[]
    */
@@ -359,7 +359,7 @@ class Database {
    * 
    * return the data model objects in an array
    * 
-   * @author Brian Hendrickson <brian@dbscript.net>
+   * @author Brian Hendrickson <brian@structal.net>
    * @access public
    * @return Model[]
    */
@@ -395,7 +395,7 @@ class Database {
    * 
    * return whether a table exists
    * 
-   * @author Brian Hendrickson <brian@dbscript.net>
+   * @author Brian Hendrickson <brian@structal.net>
    * @access public
    * @return Model[]
    */
@@ -413,7 +413,7 @@ class Database {
    * 
    * populate a data object's attributes array
    * 
-   * @author Brian Hendrickson <brian@dbscript.net>
+   * @author Brian Hendrickson <brian@structal.net>
    * @access public
    * @param Record rec
    * @param string[] fields
@@ -452,7 +452,7 @@ class Database {
   }
   
   function just_get_objects() {
-    if ( isset( $_GET['dbscript_xml_error_continue'] )) {
+    if ( isset( $_GET['structal_xml_error_continue'] )) {
       $path = $GLOBALS['PATH']['models'];
       if (is_dir($path)) {
         if ($handle = opendir($path)) {
@@ -494,7 +494,7 @@ class Database {
    * 
    * save a record's attributes into the database
    * 
-   * @author Brian Hendrickson <brian@dbscript.net>
+   * @author Brian Hendrickson <brian@structal.net>
    * @access public
    * @param Record rec
    */
@@ -536,7 +536,7 @@ class Database {
    * 
    * delete a record from the database
    * 
-   * @author Brian Hendrickson <brian@dbscript.net>
+   * @author Brian Hendrickson <brian@structal.net>
    * @access public
    * @param Record rec
    * @return boolean

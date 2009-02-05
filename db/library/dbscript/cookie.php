@@ -1,12 +1,12 @@
 <?php
 
   /** 
-   * dbscript -- restful openid framework
-   * @version 0.6.0 -- 22-October-2008
-   * @author Brian Hendrickson <brian@dbscript.net>
-   * @link http://dbscript.net/
+   * structal -- Social Media Programming Language
+   * @version 0.1.0 -- 01-January-2009
+   * @author Brian Hendrickson <brian@structal.net>
+   * @link http://structal.net/
    * @copyright Copyright 2008 Brian Hendrickson
-   * @package dbscript
+   * @package structal
    * @license http://www.opensource.org/licenses/mit-license.php MIT License
    */
 
@@ -37,13 +37,13 @@
    * </code>
    * 
    * More info...
-   * {@link http://dbscript.net/cookie}
+   * {@link http://structal.net/cookie}
    * 
-   * @package dbscript
-   * @author Brian Hendrickson <brian@dbscript.net>
+   * @package structal
+   * @author Brian Hendrickson <brian@structal.net>
    * @access public
    * @return object
-   * @version 0.6.0 -- 22-October-2008
+   * @version 0.1.0 -- 01-January-2009
    * @todo support for clients with cookies-disabled
    */
 
