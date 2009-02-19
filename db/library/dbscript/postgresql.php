@@ -1,13 +1,13 @@
 <?php
 
   /** 
-   * structal -- Social Media Programming Language
-   * @version 0.1.0 -- 01-January-2009
-   * @author Brian Hendrickson <brian@structal.net>
-   * @link http://structal.net/
+   * dbscript -- restful openid framework
+   * @version 0.6.0 -- 22-October-2008
+   * @author Brian Hendrickson <brian@dbscript.net>
+   * @link http://dbscript.net/
    * @copyright Copyright 2008 Brian Hendrickson
    * @license http://www.opensource.org/licenses/mit-license.php MIT License
-   * @package structal
+   * @package dbscript
    */
 
   /**
@@ -21,12 +21,12 @@
    * </code>
    * 
    * More info...
-   * {@link http://structal.net/postgresql}
+   * {@link http://dbscript.net/postgresql}
    * 
-   * @package structal
-   * @author Brian Hendrickson <brian@structal.net>
+   * @package dbscript
+   * @author Brian Hendrickson <brian@dbscript.net>
    * @access public
-   * @version 0.1.0 -- 01-January-2009
+   * @version 0.6.0 -- 22-October-2008
    * @todo support array datatypes
    */
 
@@ -573,11 +573,11 @@ class PostgreSQL extends Database {
     $result = $this->get_result("INSERT INTO oauth_consumers (consumer_key, secret, description) VALUES ('DUMMYKEY', '', 'Unidentified Consumer')");
 //;
 
-    $result = $this->get_result("CREATE TABLE openid_nonces (server_url VARCHAR(2047), timestamp INTEGER, ".
+    $result = $this->get_result("CREATE TABLE openid_nonces (server_url VARCHAR(255), timestamp INTEGER, ".
             "salt CHAR(40), UNIQUE (server_url, timestamp, salt))");
 
         
-    $result = $this->get_result("CREATE TABLE openid_associations (server_url VARCHAR(2047), handle VARCHAR(255), ".
+    $result = $this->get_result("CREATE TABLE openid_associations (server_url VARCHAR(255), handle VARCHAR(255), ".
             "secret BYTEA, issued INTEGER, lifetime INTEGER, ".
             "assoc_type VARCHAR(64), PRIMARY KEY (server_url, handle), ".
             "CONSTRAINT secret_length_constraint CHECK ".

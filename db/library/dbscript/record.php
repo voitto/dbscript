@@ -1,12 +1,12 @@
 <?php
 
   /** 
-   * structal -- Social Media Programming Language
-   * @version 0.1.0 -- 01-January-2009
-   * @author Brian Hendrickson <brian@structal.net>
-   * @link http://structal.net/
+   * dbscript -- restful openid framework
+   * @version 0.6.0 -- 22-October-2008
+   * @author Brian Hendrickson <brian@dbscript.net>
+   * @link http://dbscript.net/
    * @copyright Copyright 2008 Brian Hendrickson
-   * @package structal
+   * @package dbscript
    * @license http://www.opensource.org/licenses/mit-license.php MIT License
    */
 
@@ -34,12 +34,12 @@
    * </code>
    * 
    * More info...
-   * {@link http://structal.net/record}
+   * {@link http://dbscript.net/record}
    * 
-   * @package structal
-   * @author Brian Hendrickson <brian@structal.net>
+   * @package dbscript
+   * @author Brian Hendrickson <brian@dbscript.net>
    * @access public
-   * @version 0.1.0 -- 01-January-2009
+   * @version 0.6.0 -- 22-October-2008
    */
 
 class Record {
@@ -119,7 +119,7 @@ class Record {
    * 
    * initialize a new record data object
    * 
-   * @author Brian Hendrickson <brian@structal.net>
+   * @author Brian Hendrickson <brian@dbscript.net>
    * @access public
    * @param string table
    */
@@ -184,7 +184,7 @@ class Record {
    * 
    * get a list of Record attributes
    * 
-   * @author Brian Hendrickson <brian@structal.net>
+   * @author Brian Hendrickson <brian@dbscript.net>
    * @access public
    * @return string[]
    */
@@ -203,7 +203,7 @@ class Record {
    * 
    * if it's empty, set a valid Etag in the entries table
    * 
-   * @author Brian Hendrickson <brian@structal.net>
+   * @author Brian Hendrickson <brian@dbscript.net>
    * @access public
    * @return string[]
    */
@@ -240,7 +240,7 @@ class Record {
    * change a Record attribute value, and
    * register the change in the database
    * 
-   * @author Brian Hendrickson <brian@structal.net>
+   * @author Brian Hendrickson <brian@dbscript.net>
    * @access public
    * @param string field_name
    * @param string value
@@ -271,7 +271,7 @@ class Record {
    * 
    * Save attributes changed via ->set_value( field, new_value )
    * 
-   * @author Brian Hendrickson <brian@structal.net>
+   * @author Brian Hendrickson <brian@dbscript.net>
    * @access public
    */
   function save_changes() {
@@ -287,7 +287,7 @@ class Record {
    * 
    * Save all attributes into the database
    * 
-   * @author Brian Hendrickson <brian@structal.net>
+   * @author Brian Hendrickson <brian@dbscript.net>
    * @access public
    */
   function save() {
@@ -306,7 +306,7 @@ class Record {
    * 
    * get the first Record returned from a related table
    * 
-   * @author Brian Hendrickson <brian@structal.net>
+   * @author Brian Hendrickson <brian@dbscript.net>
    * @access public
    * @param string table
    * @return Record
@@ -330,7 +330,7 @@ class Record {
    * 
    * Iterate to the next Record returned from a related table
    * 
-   * @author Brian Hendrickson <brian@structal.net>
+   * @author Brian Hendrickson <brian@dbscript.net>
    * @access public
    * @param string table
    * @return Record
@@ -349,7 +349,7 @@ class Record {
    * 
    * Count the number of related records from a specific table
    * 
-   * @author Brian Hendrickson <brian@structal.net>
+   * @author Brian Hendrickson <brian@dbscript.net>
    * @access public
    * @param string table
    * @return Record
@@ -365,7 +365,7 @@ class Record {
    * 
    * set a 'child-many' relationship
    * 
-   * @author Brian Hendrickson <brian@structal.net>
+   * @author Brian Hendrickson <brian@dbscript.net>
    * @access public
    * @param string relstring
    */
@@ -378,7 +378,7 @@ class Record {
    * 
    * set a 'child-one' relationship
    * 
-   * @author Brian Hendrickson <brian@structal.net>
+   * @author Brian Hendrickson <brian@dbscript.net>
    * @access public
    * @param string relstring
    */
@@ -391,7 +391,7 @@ class Record {
    * 
    * set a 'parent-many' relationship
    * 
-   * @author Brian Hendrickson <brian@structal.net>
+   * @author Brian Hendrickson <brian@dbscript.net>
    * @access public
    * @param string relstring
    */
@@ -404,7 +404,7 @@ class Record {
    * 
    * set a 'parent-one' relationship
    * 
-   * @author Brian Hendrickson <brian@structal.net>
+   * @author Brian Hendrickson <brian@dbscript.net>
    * @access public
    * @param string relstring
    */
@@ -417,7 +417,7 @@ class Record {
    * 
    * Set the skeleton flag on a record
    * 
-   * @author Brian Hendrickson <brian@structal.net>
+   * @author Brian Hendrickson <brian@dbscript.net>
    * @access public
    */
   function is_skeleton() {
@@ -429,7 +429,7 @@ class Record {
    * 
    * Look for a callback function for this field
    * 
-   * @author Brian Hendrickson <brian@structal.net>
+   * @author Brian Hendrickson <brian@dbscript.net>
    * @access public
    * @param string field_name
    * @param string value

@@ -1,13 +1,13 @@
 <?php
 
   /** 
-   * structal -- Social Media Programming Language
-   * @version 0.1.0 -- 01-January-2009
-   * @author Brian Hendrickson <brian@structal.net>
-   * @link http://structal.net/
+   * dbscript -- restful openid framework
+   * @version 0.6.0 -- 22-October-2008
+   * @author Brian Hendrickson <brian@dbscript.net>
+   * @link http://dbscript.net/
    * @copyright Copyright 2008 Brian Hendrickson
    * @license http://www.opensource.org/licenses/mit-license.php MIT License
-   * @package structal
+   * @package dbscript
    */  
 
   /**
@@ -21,12 +21,12 @@
    * </code>
    * 
    * More info...
-   * {@link http://structal.net/mysql}
+   * {@link http://dbscript.net/mysql}
    * 
-   * @package structal
-   * @author Brian Hendrickson <brian@structal.net>
+   * @package dbscript
+   * @author Brian Hendrickson <brian@dbscript.net>
    * @access public
-   * @version 0.1.0 -- 01-January-2009
+   * @version 0.6.0 -- 22-October-2008
    * @todo support array datatypes
    */
 
@@ -126,7 +126,7 @@ class MySQL extends Database {
     KEY user_id (user_id)
     ) CHARACTER SET latin1");
 $result = $this->get_result("CREATE TABLE openid_nonces (\n".
-            "  server_url VARCHAR(2047),\n".
+            "  server_url VARCHAR(255),\n".
             "  timestamp INTEGER,\n".
             "  salt CHAR(40),\n".
             "  UNIQUE (server_url(255), timestamp, salt)\n".
@@ -481,7 +481,7 @@ $result = $this->get_result("CREATE TABLE openid_associations (\n".
   function get_tables() {
     trigger_before( 'get_tables', $this, $this );
     $tables = array();
-    $sql =  "SHOW tables FROM ".$this->dbname;
+    $sql =  "SHOW tables";
     $result = $this->get_result($sql);
     while ($arr = $this->fetch_array($result)) {
       foreach($arr as $key=>$value) {

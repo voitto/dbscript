@@ -6,7 +6,7 @@
  * It is a modified version of the gorgeous new Horde YAML parser by
  * Chris Wanstrath, Chuck Hagenbuch and Mike Naberezny.
  *
- * @author   Brian Hendrickson (brian@structal.net)
+ * @author   Brian Hendrickson (brian@dbscript.net)
  * @author   Chris Wanstrath (chris@ozmm.org)
  * @author   Chuck Hagenbuch (chuck@horde.org)
  * @author   Mike Naberezny (mike@maintainable.com)

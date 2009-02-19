@@ -1,13 +1,13 @@
 <?php
 
   /** 
-   * structal -- Social Media Programming Language
-   * @version 0.1.0 -- 01-January-2009
-   * @author Brian Hendrickson <brian@structal.net>
-   * @link http://structal.net/
+   * dbscript -- restful openid framework
+   * @version 0.6.0 -- 22-October-2008
+   * @author Brian Hendrickson <brian@dbscript.net>
+   * @link http://dbscript.net/
    * @copyright Copyright 2008 Brian Hendrickson
    * @license http://www.opensource.org/licenses/mit-license.php MIT License
-   * @package structal
+   * @package dbscript
    */  
 
   /**
@@ -21,12 +21,12 @@
    * </code>
    * 
    * More info...
-   * {@link http://structal.net/pdo}
+   * {@link http://dbscript.net/pdo}
    * 
-   * @package structal
-   * @author Brian Hendrickson <brian@structal.net>
+   * @package dbscript
+   * @author Brian Hendrickson <brian@dbscript.net>
    * @access public
-   * @version 0.1.0 -- 01-January-2009
+   * @version 0.6.0 -- 22-October-2008
    * @todo support array datatypes
    */
 
@@ -124,14 +124,14 @@ class pdo extends Database {
    * </code>
    * 
    * More info...
-   * {@link http://structal.net/pdotable}
+   * {@link http://dbscript.net/pdotable}
    * 
-   * @package structal
-   * @author Brian Hendrickson <brian@structal.net>
+   * @package dbscript
+   * @author Brian Hendrickson <brian@dbscript.net>
    * @access public
    * @param string $table
    * @param object $db
-   * @version 0.1.0 -- 01-January-2009
+   * @version 0.6.0 -- 22-October-2008
    */
 
 class pdoTable extends Model {

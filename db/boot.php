@@ -1,18 +1,18 @@
 <?php
    
   /** 
-   * structal -- Social Media Programming Language
-   * @version 0.1.0 -- 01-January-2009
-   * @author Brian Hendrickson <brian@structal.net>
-   * @link http://structal.net/
+   * dbscript -- restful openid framework
+   * @version 0.6.0 -- 22-October-2008
+   * @author Brian Hendrickson <brian@dbscript.net>
+   * @link http://dbscript.net/
    * @copyright Copyright 2008 Brian Hendrickson
-   * @package structal
+   * @package dbscript
    * @license http://www.opensource.org/licenses/mit-license.php MIT License
    */
    
   /**
    
-   structal -- Social Media Programming Language
+   dbscript -- restful openid framework
    Copyright (C) 2008 Brian Hendrickson
    
    This library is free software; you can redistribute it and/or
@@ -75,7 +75,7 @@ if (is_dir('db'))
 elseif (is_dir('site' . DIRECTORY_SEPARATOR . 'db' . DIRECTORY_SEPARATOR))
   $app = 'site' . DIRECTORY_SEPARATOR . 'db' . DIRECTORY_SEPARATOR;
 else
-  trigger_error( 'path to structal not found', E_USER_ERROR );
+  trigger_error( 'path to dbscript not found', E_USER_ERROR );
 
 $GLOBALS['PATH'] = array();
 $GLOBALS['PATH']['app'] = $app;
@@ -83,10 +83,10 @@ $GLOBALS['PATH']['library'] = $app . 'library' . DIRECTORY_SEPARATOR;
 $GLOBALS['PATH']['controllers'] = $app . 'controllers' . DIRECTORY_SEPARATOR;
 $GLOBALS['PATH']['models'] = $app . 'models' . DIRECTORY_SEPARATOR;
 $GLOBALS['PATH']['plugins'] = $app . 'plugins' . DIRECTORY_SEPARATOR;
-$GLOBALS['PATH']['structal'] = $GLOBALS['PATH']['library'] . 'structal' . DIRECTORY_SEPARATOR;
+$GLOBALS['PATH']['dbscript'] = $GLOBALS['PATH']['library'] . 'dbscript' . DIRECTORY_SEPARATOR;
 
   /**
-   * load structal minimal functions & classes
+   * load dbscript minimal functions & classes
    */
 
 foreach( array(
@@ -100,7 +100,7 @@ foreach( array(
     'cookie'
   ) as $module ) {
 
-  include $GLOBALS['PATH']['structal'] . $module . '.php';
+  include $GLOBALS['PATH']['dbscript'] . $module . '.php';
   
 }
 
@@ -112,7 +112,7 @@ lib_include( 'inflector' );
 
 
 error_reporting( E_ALL & ~E_NOTICE & ~E_WARNING );
-$structal_error_handler = set_error_handler( 'structal_error' );
+$dbscript_error_handler = set_error_handler( 'dbscript_error' );
 
 
   /**
@@ -273,7 +273,7 @@ else
    * connect to the database with settings from config.yml
    */
 
-  // load structal database support classes
+  // load dbscript database support classes
 db_include( array(
   'database',
   'model',
@@ -310,6 +310,33 @@ if ( $db->just_get_objects() )
 
 // doesn't work XXX
 //$request->connect( 'migrate' );
+
+
+/**
+ * load saved config
+ */
+
+$Setting =& $db->model('Setting');
+$Setting->find_by(array(
+  'eq'    => 'like',
+  'name'  => 'config%'
+));
+while ($s = $Setting->MoveNext()) {
+$set = split('\.',$s->name);
+  if (is_array($set) && $set[0] == 'config') {
+    if ($set[1] == 'env')
+      $env[$set[2]] = $s->value;
+  }
+}
+
+$wp_theme = "wp-content".DIRECTORY_SEPARATOR."themes".DIRECTORY_SEPARATOR.$env['theme'];
+
+if ((file_exists($wp_theme))) {
+  $GLOBALS['PATH']['content_plugins'] = 'wp-content'.DIRECTORY_SEPARATOR.'plugins'.DIRECTORY_SEPARATOR;
+  $GLOBALS['PATH']['themes'] = "wp-content".DIRECTORY_SEPARATOR."themes".DIRECTORY_SEPARATOR;
+} else {
+  $GLOBALS['PATH']['themes'] = $env['themepath'.$env['theme']].DIRECTORY_SEPARATOR;
+}
 
 
   /**

@@ -1,12 +1,12 @@
 <?php
 
   /** 
-   * structal -- Social Media Programming Language
-   * @version 0.1.0 -- 01-January-2009
-   * @author Brian Hendrickson <brian@structal.net>
-   * @link http://structal.net/
+   * dbscript -- restful openid framework
+   * @version 0.6.0 -- 22-October-2008
+   * @author Brian Hendrickson <brian@dbscript.net>
+   * @link http://dbscript.net/
    * @copyright Copyright 2008 Brian Hendrickson
-   * @package structal
+   * @package dbscript
    * @license http://www.opensource.org/licenses/mit-license.php MIT License
    */
 
@@ -14,12 +14,12 @@
    * View
    * 
    * More info...
-   * {@link http://structal.net/view}
+   * {@link http://dbscript.net/view}
    * 
-   * @package structal
-   * @author Brian Hendrickson <brian@structal.net>
+   * @package dbscript
+   * @author Brian Hendrickson <brian@dbscript.net>
    * @access public
-   * @version 0.1.0 -- 01-January-2009
+   * @version 0.6.0 -- 22-October-2008
    */
 
 class View {

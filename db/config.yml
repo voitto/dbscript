@@ -1,8 +1,8 @@
 #
-#    structal config file - config.yml
+#    dbscript config file - config.yml
 #
-# author: [Brian Hendrickson, brian@structal.net]
-# websites: [http://structal.net, http://brianhendrickson.com]
+# author: [Brian Hendrickson, brian@dbscript.net]
+# websites: [http://dbscript.net, http://brianhendrickson.com]
 # copyright: (c) 2008 Brian Hendrickson
 #
 --- %YAML:1.1
@@ -38,28 +38,48 @@ production:
 
 env:
   
-  site_title: 
+  site_title: Latest Updates
   site_subtitle: 
   site_description: 
   
-  theme: 
+  theme: prologue-theme
+  
+  email_from: root@localhost
+  email_name: Notifier
+  email_server: localhost
+  email_port: 25
+  email_user: 
+  email_pass: 
+  
+  threaded: false
+  
+  pretty_urls: false
   
   remote_sources:
-    structal: structal.net/?apps
+    dbscript: dbscript.net/?apps
   
   enable_db: development
   
-  goes: introspection
-  
-  apps:
-    - twitter
-    - identica
-    - photos
+  goes: posts
   
   authentication: email
   
   debug_enabled: true
-    
+  
+  apps:
+    - omb
+    - twitter
+    - identica
+    - photo
+    - auction
+    - themepack1
+    - all_in_one_seo_pack
+    - notifixious
+  
+  installed:
+  
+  boot: omb
+  
   plugins:
     - sessions
     - validation
@@ -81,15 +101,8 @@ env:
     - dob
     - email
   
-  email_from: root@localhost
-  email_name: Notifier
-  email_server: localhost
-  email_port: 25
-  email_user: 
-  email_pass: 
-  
   openid_server: https://e-cred.org/server
-  openid_version: 2
+  openid_version: 1
   
   xrds_services:
     oauth:
@@ -116,6 +129,7 @@ env:
   ping_server: http://dejafeed.com/?submit
   
   blocks:
+    -pages
     -categories
   
   collection_cache:
@@ -259,7 +273,7 @@ env:
   project_name: 
   
   package_name: 
-  package_version:
+  package_version: 
   
   load_paths:
     model              : models
@@ -274,6 +288,5 @@ env:
     stylesheet         : 
     javascript         : 
     image              : 
-  
   
   
