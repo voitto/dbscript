@@ -265,7 +265,7 @@ $result = $this->get_result("CREATE TABLE openid_associations (\n".
     foreach (array_unique($rec->modified_fields) AS $modified_field) {
       $datatype = $this->get_mapped_datatype($this->models[$rec->table]->field_array[$modified_field]);
       $this->pre_insert( $rec, $modified_field, $datatype );
-      if ( !( $datatype == 'blob' &&  ( !(strlen( $rec->attributes[$modified_field] ) > 0 ) ) ) ) {
+      if ( !(is_array($rec->attributes[$modified_field])) && !( $datatype == 'blob' &&  ( !(strlen( $rec->attributes[$modified_field] ) > 0 ) ) ) ) {
         $fields .= $comma . $modified_field;
         $values .= $comma . $this->quoted_insert_value( $rec, $modified_field );;
         $comma = ',';

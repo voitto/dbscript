@@ -13,7 +13,7 @@
 
 development:
   adapter: mysql
-  database: test
+  database: test2
   username: root
   password: 
   host: localhost
@@ -144,7 +144,7 @@ env:
     - 0:
       id       : xhtml
       qs       : "1.000"
-      type     : application/xhtml+xml
+      type     : text/html
       encoding : null
       charset  : utf-8
       language : en
