@@ -48,10 +48,13 @@
    
    Version 0.6.0, 22-October-2008
      apps, openappstore
+
+	 Version 0.7.0, 17-April-2010
+		 twitter, facebook, rss
    
    */
    
-$version = '0.6.0';
+$version = '0.7.0';
 
   /**
    * directory paths
@@ -66,7 +69,7 @@ global $variants,$request,$loader,$db,$logic;
 
 if (file_exists('config/config.php'))
   require('config/config.php');
-else
+elseif (file_exists('config.php'))
   require('config.php');
 
 if (defined('PRETTY_URL_BASE') && PRETTY_URL_BASE ){
