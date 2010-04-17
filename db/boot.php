@@ -5,7 +5,7 @@
    * @version 0.6.0 -- 22-October-2008
    * @author Brian Hendrickson <brian@dbscript.net>
    * @link http://dbscript.net/
-   * @copyright Copyright 2008 Brian Hendrickson
+   * @copyright Copyright 2009 Brian Hendrickson
    * @package dbscript
    * @license http://www.opensource.org/licenses/mit-license.php MIT License
    */
@@ -60,14 +60,71 @@ $version = '0.6.0';
 global $views,$app,$config,$env,$exec_time,$version,$response;
 global $variants,$request,$loader,$db,$logic;
 
-
   /**
-   * optional pretty URLs
+   * load config
    */
 
-//global $pretty_url_base;
-//$pretty_url_base = "http://openmicroblogger.com";
+if (file_exists('config/config.php'))
+  require('config/config.php');
+else
+  require('config.php');
 
+if (defined('PRETTY_URL_BASE') && PRETTY_URL_BASE ){
+	global $pretty_url_base;
+	$pretty_url_base = PRETTY_URL_BASE;
+}
+
+  /**
+   * memcached
+   */
+
+if (defined('MEMCACHED') && MEMCACHED ) {
+  $perma = parse_url( $_SERVER['REQUEST_URI'] );
+  $_PERMA = explode( "/", $perma['path'] );
+  @array_shift( $_PERMA );
+  if ( isset($_PERMA[0]) && $_PERMA[0] != basename($_SERVER['PHP_SELF']) ){
+    require_once 'db/library/pca/pca.class.php';
+    $cache = PCA::get_best_backend();
+    if ( $cache->exists( $_SERVER['REQUEST_URI'] )) {
+  		header( 'Location: '.$cache->get( $_SERVER['REQUEST_URI'] ), TRUE, 301 );
+  		exit;
+  	}
+  }
+  require_once 'db/library/pca/pca.class.php';
+  $cache = PCA::get_best_backend();
+  $_SERVER['FULL_URL'] = 'http://';
+  if ( $_SERVER['SERVER_PORT']!='80' ) {
+    $port = ':' . $_SERVER['SERVER_PORT'];
+  }
+  if ( isset( $_SERVER['REQUEST_URI'] ) ) {
+    $script = $_SERVER['REQUEST_URI'];
+  } else {
+    $script = $_SERVER['PHP_SELF'];
+    if ( $_SERVER['QUERY_STRING']>' ' ) {
+      $script .= '?'.$_SERVER['QUERY_STRING'];
+    }
+  }
+  if ( isset( $_SERVER['HTTP_HOST'] ) ) {
+    $_SERVER['FULL_URL'] .= $_SERVER['HTTP_HOST'] . $port . $script;
+  } else {
+    $_SERVER['FULL_URL'] .= $_SERVER['SERVER_NAME'] . $port . $script;
+  }
+  global $pretty_url_base;
+  if (isset($pretty_url_base) && !empty($pretty_url_base)) {
+    if (!empty($_SERVER['QUERY_STRING']))
+      $url = $pretty_url_base.'/?'.$_SERVER['QUERY_STRING'];
+    else
+      $url = $pretty_url_base.'/';
+  } else {
+    $url = $_SERVER['FULL_URL'];
+  }
+  if($cache->exists($url) && $cache->exists($url.'type')){
+    header( 'Content-Type: '.$cache->get($url.'type') );
+    header( "Content-Disposition: inline" );
+    echo $cache->get($url);
+    exit;
+  }
+}
 
   // set path to db directory
 if (is_dir('db'))
@@ -265,10 +322,6 @@ else
   $request->set_layout_path( $env['layout_folder'].DIRECTORY_SEPARATOR );
 
 
-
-
-
-
   /**
    * connect to the database with settings from config.yml
    */
@@ -282,6 +335,19 @@ db_include( array(
   'resultiterator',
   $adapter
 ));
+
+if (defined('DB_NAME') && DB_NAME)
+  $database = DB_NAME;
+
+if (defined('DB_USER') && DB_USER)
+  $username = DB_USER;
+
+if (defined('DB_PASSWORD') && DB_PASSWORD)
+  $password = DB_PASSWORD;
+
+if (defined('DB_HOST') && DB_HOST)
+  $host = DB_HOST;
+
 
   // init the Database ($db) object and connect to the database
 $db = new $adapter(
@@ -304,12 +370,109 @@ if ( $db->just_get_objects() )
   return;
 
 
-  /**
-   * connect pre-plugin routes
-   */
+/**
+ * connect pre-plugin routes
+ */
 
 // doesn't work XXX
 //$request->connect( 'migrate' );
+
+
+/**
+ * set up wp theme and plugin paths
+ */
+
+$wp_theme = "wp-content".DIRECTORY_SEPARATOR."themes".DIRECTORY_SEPARATOR.$env['theme'];
+
+if ((file_exists($wp_theme))) {
+  $GLOBALS['PATH']['content_plugins'] = 'wp-content'.DIRECTORY_SEPARATOR.'plugins'.DIRECTORY_SEPARATOR;
+  $GLOBALS['PATH']['themes'] = "wp-content".DIRECTORY_SEPARATOR."themes".DIRECTORY_SEPARATOR;
+} else {
+  $GLOBALS['PATH']['themes'] = $env['themepath'.$env['theme']].DIRECTORY_SEPARATOR;
+}
+
+
+/**
+ * OMB MU setup
+ */
+
+$params = array_merge($_GET,$_POST);
+$stream = false;
+list($subdomain, $rest) = explode('.', $_SERVER['SERVER_NAME'], 2);
+// XXX subdomain upgrade
+if ($pretty_url_base && !mu_url() && !('http://'.$subdomain.".".$rest == $pretty_url_base)) {
+  $request->base = $request->values[1].$subdomain.".".$rest;
+  $request->domain = $subdomain.".".$rest;
+  $pretty_url_base = $request->base;
+  $stream = $subdomain;
+// XXX subdomain upgrade
+} elseif (mu_url()) {
+  $pattern='/(\?)?twitter\/([a-z]+)(\/?)/';
+  if ( 1 <= preg_match_all( $pattern, $request->uri, $found )) {
+	  if ($pretty_url_base && environment('subdomains')){
+		  $trail = "/";
+		  $pattern2='/(\?)?twitter\/([a-z]+)(\/?)(\/.+)/';
+		  if ( 1 <= preg_match_all( $pattern2, $request->uri, $found2 ))
+        $trail = $found2[4][0];
+      redirect_to('http://'.$found[2][0].".".$request->domain.$trail);
+	  }
+    $uri = $request->uri;
+    $tags[] = $found;
+    // XXX subdomain upgrade
+    $repl = 'twitter/'.$tags[0][2][0].$tags[0][3][0];
+    $request->uri = str_replace($repl,'',$uri);
+    $request->prefix = $repl;
+    $request->setup();
+    $trail = '';
+    if (empty($tags[0][3][0]))
+      $trail = "/";
+    $request->base = substr($uri,0,strpos($uri,$tags[0][0][0])+(strlen($repl)+1)).$trail;
+  }
+  $stream = $tags[0][2][0];
+} elseif (isset($params['username']) && isset($params['password']) && !isset($_FILES['media'])) {
+  $sql = "SELECT nickname,profile_id FROM shorteners WHERE nickname LIKE '".$db->escape_string($params['username'])."'";
+  $sql .= " AND password LIKE '".$db->escape_string($params['password'])."'";
+  $result = $db->get_result( $sql );
+  if ( $db->num_rows($result) == 1 ) {
+    if (!($pretty_url_base && !mu_url() && !('http://'.$subdomain.".".$rest == $pretty_url_base))) {
+      $request->base = 'http://'.$subdomain.".".$request->domain;
+      $request->domain = $subdomain.".".$request->domain;
+      $pretty_url_base = $request->base;
+    }
+    $stream = $db->result_value( $result, 0, "nickname" );
+    global $db,$request;
+    global $person_id;
+    global $api_methods,$api_method_perms;
+    if (array_key_exists($request->action,$api_method_perms)) {
+      $arr = $api_method_perms[$request->action];
+      if ($db->models[$arr['table']]->can($arr['perm']))
+        return;
+    }
+    $Identity =& $db->get_table( 'identities' );
+    $Person =& $db->get_table( 'people' );
+    $i = $Identity->find($db->result_value( $result, 0, "profile_id" ));
+    $p = $Person->find( $i->person_id );
+    if (!(isset( $p->id ) && $p->id > 0)) {
+      header('HTTP/1.1 401 Unauthorized');
+      echo 'BAD LOGIN';
+      exit;
+    }
+    $person_id = $p->id;
+  }
+}
+if ($stream) {
+  if (!$db->table_exists('blogs')) {
+    $Blog =& $db->model('Blog');
+    $Blog->save();
+  }
+  $sql = "SELECT prefix FROM blogs WHERE nickname LIKE '".$db->escape_string($stream)."'";
+  $result = $db->get_result( $sql );
+  if ( $db->num_rows($result) == 1 ) {
+    global $prefix;
+    $prefix = $db->result_value( $result, 0, "prefix" )."_";
+    $db->prefix = $prefix;
+  }
+}
 
 
 /**
@@ -322,35 +485,97 @@ $Setting->find_by(array(
   'name'  => 'config%'
 ));
 while ($s = $Setting->MoveNext()) {
-$set = split('\.',$s->name);
+  $set = split('\.',$s->name);
   if (is_array($set) && $set[0] == 'config') {
-    if ($set[1] == 'env')
+    if ($set[1] == 'env') {
       $env[$set[2]] = $s->value;
+    } elseif ($set[1] == 'perms') {
+      $tab =& $db->models[$set[2]];
+      if ($tab)
+        $tab->permission_mask( $set[3],$s->value,$set[4] );
+    }
   }
 }
 
-$wp_theme = "wp-content".DIRECTORY_SEPARATOR."themes".DIRECTORY_SEPARATOR.$env['theme'];
 
-if ((file_exists($wp_theme))) {
-  $GLOBALS['PATH']['content_plugins'] = 'wp-content'.DIRECTORY_SEPARATOR.'plugins'.DIRECTORY_SEPARATOR;
-  $GLOBALS['PATH']['themes'] = "wp-content".DIRECTORY_SEPARATOR."themes".DIRECTORY_SEPARATOR;
-} else {
-  $GLOBALS['PATH']['themes'] = $env['themepath'.$env['theme']].DIRECTORY_SEPARATOR;
+/**
+ * overrides from config.php
+ */
+
+if (isset($env['max_upload_mb']))
+  $db->max_upload_megabytes($env['max_upload_mb']);
+
+if (defined('INTRANET') && INTRANET)
+  $env['authentication'] = 'password';
+
+//if (UPLOADS)
+//  $env['collection_cache']['posts']['location'] = UPLOADS;
+
+//if (UPLOADS)
+//  $env['collection_cache']['identities']['location'] = UPLOADS;
+
+// PHP5 only set server timezone
+if (function_exists(timezone_abbreviations_list) && environment('timezone'))
+  if (setting('timezone'))
+    set_tz_by_offset(setting('timezone'));
+  else
+    set_tz_by_offset(environment('timezone'));
+
+
+/**
+ * load virtual API methods
+ */
+
+global $api_methods,$api_method_perms;
+$api_methods = array();
+$api_method_perms = array();
+$Method =& $db->model('Method');
+$Method->set_order('asc');
+$Method->find_by(array(
+  'eq'        => 'like',
+  'function'  => 'api_%'
+));
+while ($m = $Method->MoveNext()) {
+  $api_method_perms[$m->function] = array('table'=>$m->resource,'perm'=>$m->permission);
+  $api_methods[$m->function] = $m->code;
+  $patterns = explode( '/', $m->route );
+  $requirements = array();
+  foreach ( $patterns as $pos => $str ) {
+    if ( substr( $str, 0, 1 ) == ':' ) {
+		  $requirements[] = '[A-Za-z0-9_.]+';
+    }
+  }
+	$routesetup = array(
+	  'action'=>$m->function,
+	  'resource'=>$m->resource
+	);
+	if (count($requirements) > 0)
+		$routesetup['requirements'] = $requirements;
+  $request->connect(
+    $m->route,
+    $routesetup
+  );
+  if ($m->omb)
+    before_filter( 'authenticate_with_omb', $m->function );
+  if ($m->http)
+    before_filter( 'authenticate_with_http', $m->function );
+  if ($m->oauth)
+    before_filter( 'authenticate_with_oauth', $m->function );
 }
 
 
-  /**
-   * load plugins
-   */
+/**
+ * load plugins
+ */
 
 if ( isset( $env ))
   while ( list( $key, $plugin ) = each( $env['plugins'] ) )
     load_plugin( $plugin );
 
 
-  /**
-   * connect more Routes to the Mapper
-   */
+/**
+ * connect more Routes to the Mapper
+ */
 
 $request->connect(
   ':resource/:id/email/:ident',
@@ -422,16 +647,16 @@ $request->connect( '', array( 'resource'=>$env['goes'], 'action'=>'get' ) );
 
 $request->routematch();
 
-//print_r($request->activeroute); echo '<BR><BR>'; print_r($request->params); exit;
+//print_r($request->activeroute); echo '<br /><br />'; print_r($request->params); exit;
 
 /**
  * attach functions to aspect crosscuts
  */
 
   // load data model if these model methods are triggered
-before_filter( 'load_model', 'delete_from_request' );
-before_filter( 'load_model', 'insert_from_request' );
-before_filter( 'load_model', 'update_from_request' );
+before_filter( 'load_model', 'delete_from_post' );
+before_filter( 'load_model', 'insert_from_post' );
+before_filter( 'load_model', 'update_from_post' );
 before_filter( 'load_model', 'fields_from_request' );
 before_filter( 'load_model', 'MoveFirst' );
 before_filter( 'load_model', 'MoveNext' );
@@ -453,6 +678,7 @@ after_filter( 'send_ping', 'update_from_post' );
 
   // echo value after single-field Ajax PUT call
 after_filter( 'ajax_put_field', 'update_from_post' );
+after_filter( 'ajax_put_field', 'insert_from_post' );
 
 
 // authenticate yourself without OpenID
@@ -474,4 +700,3 @@ $response = new View();
 
 render( 'action', $request->action );
 
-?>

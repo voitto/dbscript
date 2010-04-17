@@ -5,7 +5,7 @@
    * @version 0.6.0 -- 22-October-2008
    * @author Brian Hendrickson <brian@dbscript.net>
    * @link http://dbscript.net/
-   * @copyright Copyright 2008 Brian Hendrickson
+   * @copyright Copyright 2009 Brian Hendrickson
    * @package dbscript
    * @license http://www.opensource.org/licenses/mit-license.php MIT License
    */
@@ -37,7 +37,9 @@
    *
    *   // function to test whether current user is an administrator
    * function admin() {
-   *   return true;
+   *   if ( member_of( 'administrators' ))
+   *     return true;
+   *   return false;
    * }
    * </code>
    * 
@@ -168,6 +170,7 @@ class Model {
     trigger_before( 'insert_from_post', $this, $req );
     
     global $db;
+    
     $fields = $this->fields_from_request($req);
     
     foreach ($fields as $table=>$fieldlist) {
@@ -204,73 +207,91 @@ class Model {
         }
       }
       
-      
       $result = $rec->save_changes();
       
       if ( !$result )
         trigger_error( "The record could not be saved into the database.", E_USER_ERROR );
       
       if ( $this->has_metadata ) {
-        $atomentry = $db->models['entries']->base();
-        if ($atomentry) {
-          $atomentry->set_value( 'etag', getEtag( $rec->$pkfield ) );
-          $atomentry->set_value( 'resource', $table );
-          $atomentry->set_value( 'record_id', $rec->$pkfield );
-          
-          $atomentry->set_value( 'content_type', $content_type );
-          
-          $atomentry->set_value( 'last_modified', timestamp() );
-          $atomentry->set_value( 'person_id', get_person_id() );
-          $aresult = $atomentry->save_changes();
-          if ($aresult) {
-            if ( array_key_exists( 'entry_id', $rec->attributes ))
-              $rec->set_value( 'entry_id', $atomentry->id );
-            if ( array_key_exists( 'person_id', $rec->attributes ))
-              $rec->set_value( 'person_id', get_person_id() );
-            $rec->save_changes();
-          }
-        }
+        $atomentry = $this->set_metadata($rec,$content_type,$table,$pkfield);
         if (($rec->table == $this->table) && isset($rec->id)) {
-          $req->set_param( 'id', $rec->id );
-          $req->id = $rec->id;
-          $Category =& $db->model('Category');
-          $Entry =& $db->model('Entry');
-          foreach($req->params as $cname=>$catval) {
-            if (substr($cname,0,8) == 'category') {
-              $added = array();
-              if (!in_array($req->$cname, $added)) {
-                $join =& $db->get_table($Entry->join_table_for('categories', 'entries'));
-                $j = $join->base();
-                $j->set_value('entry_id',$atomentry->id);
-                $c = $Category->find_by('term',$req->$cname);
-                if ($c) {
-                  $j->set_value('category_id',$c->id);
-                  $j->save_changes();
-                  $added[] = $req->$cname;
-                } elseif (!empty($req->$cname)) {
-                  if (isset_admin_email()) {
-                    $c = $Category->base();
-                    $c->set_value( 'name', $req->$cname);
-                    $c->set_value( 'term', strtolower($req->$cname));
-                    $c->save();
-                    $j->set_value('category_id',$c->id);
-                    $j->save_changes();
-                    $added[] = $req->$cname;
-                    admin_alert( "created a new category: ".$req->$cname." at ".$req->base );
-                  }
-                }
-              }
-            }
-          }
+          $this->set_categories($rec,$req,$atomentry);
         }
       }
+      
+      
     }
     
     trigger_after( 'insert_from_post', $this, $rec );
     
   }
   
-  function update_from_post( &$req ) {
+  function set_metadata(&$rec,$content_type,$table,$pkfield) {
+    global $db;
+    $atomentry = $db->models['entries']->find($rec->entry_id);
+    if (!$atomentry) {
+      $atomentry = $db->models['entries']->base();
+      $atomentry->set_value( 'etag', getEtag( $rec->$pkfield ) );
+      $atomentry->set_value( 'resource', $table );
+      $atomentry->set_value( 'record_id', $rec->$pkfield );
+      $atomentry->set_value( 'content_type', $content_type );
+      $atomentry->set_value( 'last_modified', timestamp() );
+      $atomentry->set_value( 'person_id', get_person_id() );
+      $aresult = $atomentry->save_changes();
+      if ($aresult) {
+        if ( array_key_exists( 'entry_id', $rec->attributes ))
+          $rec->set_value( 'entry_id', $atomentry->id );
+        if ( array_key_exists( 'person_id', $rec->attributes ))
+          $rec->set_value( 'person_id', get_person_id() );
+        if ( array_key_exists( 'profile_id', $rec->attributes ))
+          $rec->set_value( 'profile_id', get_profile_id() );
+        $rec->save_changes();
+      }
+    } else {
+      $atomentry->set_value( 'content_type', $content_type );
+      $aresult = $atomentry->save_changes();
+    }
+    return $atomentry;
+  }
+  
+  function set_categories(&$rec,&$req,&$atomentry) {
+    global $db;
+    $req->set_param( 'id', $rec->id );
+    $req->id = $rec->id;
+    $Category =& $db->model('Category');
+    $Entry =& $db->model('Entry');
+    foreach($req->params as $cname=>$catval) {
+      if (substr($cname,0,8) == 'category') {
+        $added = array();
+        if (!in_array($req->$cname, $added)) {
+          $join =& $db->get_table($Entry->join_table_for('categories', 'entries'));
+          $j = $join->base();
+          $j->set_value('entry_id',$atomentry->id);
+          $c = $Category->find_by('term',$req->$cname);
+          if ($c) {
+            $j->set_value('category_id',$c->id);
+            $j->save_changes();
+            $added[] = $req->$cname;
+          } elseif (!empty($req->$cname)) {
+            if (isset_admin_email()) {
+              $c = $Category->base();
+              $c->set_value( 'name', strtolower($req->$cname));
+              $c->set_value( 'term', strtolower($req->$cname));
+              $c->save();
+              $j->set_value('category_id',$c->id);
+              $j->save_changes();
+              $added[] = $req->$cname;
+              admin_alert( "created a new category: ".$req->$cname." at ".$req->base );
+            } else {
+              trigger_error("Sorry, I could not create the new Category because the administrator e-mail address has not been set.", E_USER_ERROR);
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  function update_from_post( &$req, $revision=false ) {
     
     trigger_before( 'update_from_post', $this, $req );
     
@@ -329,6 +350,16 @@ class Model {
     }
     
     $rec = $this->find( $recid );
+
+    if ($revision){
+		  // save a revision
+		  $Revision =& $db->model('Revision');
+		  $r = $Revision->base();
+		  $r->set_value( 'data', serialize($rec) );
+		  $r->set_value( 'profile_id', get_profile_id() );
+		  $r->set_value( 'target_id', $rec->entry_id );
+		  $r->save();
+  	}
     
     foreach ( $fieldsarr as $field=>$type ) {
       if ($this->has_metadata && is_blob($rec->table.'.'.$field)) {
@@ -375,7 +406,7 @@ class Model {
     
   }
   
-  function delete_from_post( &$req ) {
+  function delete_from_post( &$req, $revision=false ) {
     
     trigger_before( 'delete_from_post', $this, $req );
     
@@ -389,11 +420,23 @@ class Model {
     if ($this->has_metadata) {
       $atomentry = $db->models['entries']->find_by( 'etag', $req->params['entry']['etag'] );
       $recid = $atomentry->attributes['record_id'];
+      if (!$req->id)
+        $req->set_param('id',$recid);
     } else {
       $recid = $req->id;
     }
     
     $rec = $this->find( $recid );
+
+    if ($revision){
+		  // save a revision
+		  $Revision =& $db->model('Revision');
+		  $r = $Revision->base();
+		  $r->set_value( 'data', serialize($rec) );
+		  $r->set_value( 'profile_id', get_profile_id() );
+		  $r->set_value( 'target_id', $rec->entry_id );
+		  $r->save();
+  	}
     
     if ($this->has_metadata) {
       $Person =& $db->model('Person');
@@ -408,13 +451,18 @@ class Model {
     if ($this->has_metadata && isset($coll[$req->resource]) && $coll[$req->resource]['location'] == 'aws') {
       $ext = extension_for($atomentry->content_type);
       $pkname = $rec->primary_key;
-      $aws_file = $rec->table . $rec->$pkname . "." . $ext;
+      global $prefix;
+      $aws_file = $prefix.$rec->table . $rec->$pkname . "." . $ext;
       lib_include( 'S3' );
       $s3 = new S3( environment('awsAccessKey'), environment('awsSecretKey') );
       if (!$s3)
         trigger_error( 'Sorry, there was a problem connecting to Amazon Web Services', E_USER_ERROR );
-      if (!($s3->deleteObject(environment('awsBucket'), urlencode($aws_file))))
-        trigger_error( 'Sorry, there was a problem deleting the file from Amazon Web Services', E_USER_ERROR );
+      if ($s3->getBucket(environment('awsBucket'))
+      && $s3->getObject(environment('awsBucket'),urlencode($aws_file))) {
+        $result = $s3->deleteObject(environment('awsBucket'), urlencode($aws_file));
+        if (!$result) 
+          trigger_error( 'Sorry, there was a problem deleting the file from Amazon Web Services', E_USER_ERROR );
+      }
     }
     
     $result = $db->delete_record($rec);
@@ -571,11 +619,11 @@ class Model {
       if (!(count($pair)==2)) trigger_error( "invalid data model access rule", E_USER_ERROR );
       if ($pair[0] == 'all') {
         foreach ( $this->field_array as $field => $data_type ) {
-          if (!(isset($this->access_list['read'][$field][$pair[1]])))
+          if (!(in_array($pair[1],$this->access_list['read'][$field])))
             $this->access_list['read'][$field][] = $pair[1];
         }
       } else {
-        if (!(isset($this->access_list['read'][$pair[0]][$pair[1]])))
+        if (!(in_array($pair[1],$this->access_list['read'][$pair[0]])))
           $this->access_list['read'][$pair[0]][] = $pair[1];
       }
     }
@@ -590,11 +638,11 @@ class Model {
       if (!(count($pair)==2)) trigger_error( "invalid data model access rule", E_USER_ERROR );
       if ($pair[0] == 'all') {
         foreach ( $this->field_array as $field => $data_type ) {
-          if (!(isset($this->access_list['write'][$field][$pair[1]])))
+          if (!(in_array($pair[1],$this->access_list['write'][$field])))
             $this->access_list['write'][$field][] = $pair[1];
         }
       } else {
-        if (!(isset($this->access_list['write'][$pair[0]][$pair[1]])))
+        if (!(in_array($pair[1],$this->access_list['write'][$pair[0]])))
           $this->access_list['write'][$pair[0]][] = $pair[1];
       }
     }
@@ -652,6 +700,58 @@ class Model {
     }
   }
 
+  function can($action) {
+    if (in_array($action,array('read','write'))) {
+      $func = "can_".$action."_fields";
+      if (!($this->$func($this->field_array)))
+        return false;
+      return true;
+    }
+    if (in_array($action,array('create','delete'))) {
+      $func = "can_".$action;
+      if (!($this->$func($this->table)))
+        return false;
+      return true;
+    }
+  }
+
+  // config.perms
+  
+  function permission_mask( $perm,$value,$group ) {
+    
+    if (in_array($perm,array('read','write'))) {
+      foreach($this->access_list[$perm] as $field=>$vals) {
+        $found = false;
+        foreach($vals as $idx=>$g) {
+          if ($group == $g) {
+            if (!$value)
+              unset($this->access_list[$perm][$field][$idx]);
+            $found = true;
+          }
+        }
+        if (!$found && $value) {
+          foreach ( $this->field_array as $field => $data_type ) {
+            $this->access_list[$perm][$field][] = $group;
+          }
+        }
+      }
+    } else {
+      
+      foreach($this->access_list[$perm][$this->table] as $idx=>$g) {
+        $found = false;
+        if ($group == $g) {
+          $found = true;
+          if (!$value)
+            unset($this->access_list[$perm][$this->table][$idx]);
+        }
+        if (!$found && $value)
+          $this->access_list[$perm][$this->table][] = $group;
+      }      
+      
+    }
+    
+  }
+  
   function set_action( $method ) {
     trigger_before('set_action',$this,$this);
     $this->allowed_methods[] = $method;
@@ -698,7 +798,7 @@ class Model {
   function is_unique_value( $value, $field ) {
     global $db;
     $value = $db->escape_string($value);
-    $result = $db->get_result("select $field from ".$this->table." where ".$field." = '$value'");
+    $result = $db->get_result("select $field from ".$db->prefix.$this->table." where ".$field." = '$value'");
     return (!($result && $db->num_rows($result) > 0));
   }
   
@@ -747,7 +847,7 @@ class Model {
 
   
   function set_relation( $relstring, $type ) {
-    //echo $this->table . " " .$relstring."<BR>";
+    //echo $this->table . " " .$relstring."<br />";
     if (!(isset($this->table)))
       $this->table = tableize( get_class( $this ));
     global $db;
@@ -771,7 +871,10 @@ class Model {
       $fk = $table.".".$this->foreign_key_for( $table );
     }
     if ($type == 'child-many') {
-      if (!$db->table_exists($this->join_table_for($table, $this->table))) {
+      $jtab = $this->join_table_for($table, $this->table);
+      if (!(isset($db->tables)))
+        $db->tables = $db->get_tables();
+      if ( !( in_array( $db->prefix.$jtab, $db->tables ) ) ) {
         $join =& $db->get_table($this->join_table_for($table, $this->table));
         if (!($join->exists)) {
           $join->int_field( strtolower(classify($this->table))."_".$k );
@@ -785,6 +888,12 @@ class Model {
       $this->relations[$table]['col'] = $k;
       $this->relations[$table]['fkey'] = $fk;
       $this->relations[$table]['tab'] = $table;
+    }
+  }
+
+  function unset_relation( $table ) {
+    if (isset($this->relations[$table])) {
+      unset($this->relations[$table]);
     }
   }
   
@@ -927,7 +1036,7 @@ class Model {
     if (!(isset($db->tables)))
       $db->tables = $db->get_tables();
 
-    if ( !( in_array( $this->table, $db->tables ) ) ) {
+    if ( !( in_array( $db->prefix.$this->table, $db->tables ) ) ) {
       if (count($this->field_array)>0) {
         if (!(isset($this->primary_key)))
           $this->auto_field( 'id' );
@@ -937,8 +1046,7 @@ class Model {
         return NULL;
       }
     }
-    
-    if ( !( isset( $this->primary_key )) && $this->table != 'db_sessions')
+    if ( !( isset( $this->primary_key )) && (!strstr($this->table,'db_sessions')))
       trigger_error("The ".$this->table." table must have a primary key. Example: ".$this->table."->set_primary_key('field')".@mysql_error($this->conn), E_USER_ERROR );
     $this->exists = true;
     $this->set_routes( $this->table );
@@ -1069,11 +1177,13 @@ class Model {
   }
   
   function set_groupby( $col ) {
-    if ( strlen( $col ) > 0 ) $this->groupby = $this->table . "." . $col;
+    global $db;
+    if ( strlen( $col ) > 0 ) $this->groupby = $db->prefix.$this->table . "." . $col;
   }
   
   function set_orderby( $col ) {
-    if ( strlen( $col ) > 0 ) $this->orderby = $this->table . "." . $col;
+    global $db;
+    if ( strlen( $col ) > 0 ) $this->orderby = $db->prefix.$this->table . "." . $col;
   }
   
   function set_order( $order ) {
@@ -1140,6 +1250,11 @@ class Model {
   function get_query( $id=NULL, $find_by=NULL ) {
     global $db;
     return $db->get_query( $id, $find_by, $this );
+  }
+  
+  function use_templates_from( $resource ) {
+    global $request;
+    $request->use_templates_from( $resource, $this->table );
   }
   
 }

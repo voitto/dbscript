@@ -43,11 +43,12 @@ class View {
       $this->collection = new Collection( $request->resource );
     else
       $this->collection = new Collection( null );
+    
     $this->named_vars['db'] =& $db;
     $this->named_vars['request'] =& $request;
     $this->named_vars['collection'] =& $this->collection;
     $this->named_vars['response'] =& $this;
-    if (check_cookie())
+    if (get_profile_id())
       $this->named_vars['profile'] =& get_profile();
     else
       $this->named_vars['profile'] = false;
@@ -55,6 +56,7 @@ class View {
       $this->named_vars['resource'] =& $db->get_table( $request->resource );
     else
       $this->named_vars['resource'] = false;
+    $this->named_vars['prefix'] = $db->prefix;
     $this->controller = $request->controller;
     
     load_apps();
@@ -65,6 +67,8 @@ class View {
       $cont = $controller_path . $request->resource . ".php";
       if ( file_exists( $cont )) {
         $this->controller = $request->resource . ".php";
+      } elseif (isset($request->templates_resource[$request->resource]) && file_exists($controller_path . $request->templates_resource[$request->resource] . ".php")) {
+        $this->controller = $request->templates_resource[$request->resource] . ".php";
       } else {
         if (isset($GLOBALS['PATH']['apps'])) {
           foreach($GLOBALS['PATH']['apps'] as $k=>$v) {
@@ -100,6 +104,18 @@ class View {
     $view = $request->get_template_path( $ext );
     
     $action = $request->action;
+    
+    global $api_methods,$api_method_perms;
+    
+    $api_method = $action;
+    
+    if (array_key_exists($action,$api_methods)){
+      trigger_before( $api_method, $request, $db );
+      $action = @create_function( '&$vars', $api_methods[$action] );
+      $this->named_vars['resource'] =& $db->get_table($api_method_perms[$api_method]['table']);
+      if (!($this->named_vars['resource']->can($api_method_perms[$api_method]['perm'])))
+        trigger_error('not allowed sorry',E_USER_ERROR);
+    }
     
     if (!(function_exists($action)))
       $action = 'index';
@@ -160,8 +176,7 @@ class View {
       
     } elseif ( !( in_array( 'partial', $request->activeroute->patterns, true )) ) {
       
-      // layout_template_not_exists
-      
+      // layout_template_not_exists (get/post/put/delete action)
       $this->render_partial( $request, $request->action );
       
     }
@@ -186,15 +201,15 @@ class View {
     
     global $db;
     
-    if ( function_exists( $action )) {
+    if ( file_exists( $view ) && function_exists( $action ) ) {
+      
       trigger_before( $request->action, $request, $db );
       $result = $action( array_merge( $this->named_vars, $db->get_resource() ));
       trigger_after( $request->action, $request, $db );
+      
       if ( is_array( $result ))
         extract( $result );
-    }
-    
-    if ( file_exists( $view ) ) {
+      
       if (!($this->header_sent)) {
         $content_type = 'Content-Type: ' . $this->pick_content_type( $ext );
         if ($this->pick_content_charset( $ext ))
@@ -202,10 +217,12 @@ class View {
         header( $content_type );
         $this->header_sent = true;
       }
+      
       include( $view );
+      
     } else {
       
-      // no template, maybe it's a blobcall
+      // no template, check for blobcall
       
       if ((in_array(type_of( $ext ), mime_types())) && !($this->header_sent)) {
         $model =& $db->get_table($request->resource);
@@ -214,10 +231,20 @@ class View {
         trigger_before( $request->action, $request, $db );
         $Member = $this->collection->MoveFirst();
         render_blob( $Member->$template, $ext );
+      } else {
+        
+        if (strpos($request->uri, 'robots') === false
+          || strpos($request->uri, 'crawl') === false)
+            admin_alert($request->uri." $view $action ".$_SERVER[REMOTE_HOST]);
+        
       }
       
     }
     
+  }
+  
+  function set_var($name,$value) {
+    $this->named_vars[$name] = $value;
   }
   
   function negotiate_content( &$request, $template ) {

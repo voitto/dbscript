@@ -127,6 +127,12 @@ class Mapper {
   var $error;
 
   /**
+   * url prefix for sub-sites
+   * @var string
+   */
+  var $prefix;
+
+  /**
    * openid status
    * @var boolean
    */
@@ -143,14 +149,33 @@ class Mapper {
    * @var string
    */
   var $DbSession;
+  
+  var $templates_resource;
 
   function Mapper() {
     
     $this->params = array('');
     
+    $this->prefix = '';
+    
     $this->cookiedays = 30;
 
     $this->uri = $this->composite_uri();
+    
+    $this->setup();
+    
+    $this->routes = array();
+    $this->persisted_vars = array();
+    $this->allowed_methods = array();
+    $this->groups = array();
+    $this->template_path = '';
+    $this->layout_path = '';
+    $this->error = false;
+    $this->openid_complete = false;
+    $this->templates_resource = array();
+  }
+  
+  function setup() {
     
     preg_match( "/^(https?:\/\/)([^\/]+)\/?[^\?]+?[\??]([-%\w\/\.]+)?/i", $this->uri, $this->values );
     
@@ -182,28 +207,40 @@ class Mapper {
       $actionsplit = split("\.", $this->params[(count($this->params)-1)]);
       $this->client_wants = $actionsplit[1];
     }
-      
-    session_set_cookie_params( 60*60*24*$this->cookiedays, $this->path );
     
-    if (!(substr($this->path, -1) == "/"))
-      $this->path .= "/";
+    $expiry = 60*60*24*$this->cookiedays;
+    
+    if (environment('cookielife'))
+      $expiry  = environment('cookielife');
+    
+    session_set_cookie_params( $expiry, $this->path );
+    
+    // XXX subdomain upgrade
+    if (strpos($this->base,"twitter\/"))
+      $this->path = $this->path.$this->prefix;
     
     if (!($this->values[2] == 'localhost'))
       $this->domain = $this->values[2];
+    
+    $paramstr = substr($this->uri,$qp+1);
+    
+    $urlsplit = split("http%3A//",$paramstr);
+    
+    if (count($urlsplit)>1)
+      $paramstr = $urlsplit[0];
 
+    if (isset($this->client_wants) && $qp > $lenbase) {
+      $ext = $this->client_wants;
+      if (!(strpos($paramstr,".".$ext) === false))
+        $paramsplit = split("\.".$ext, $paramstr);
+      if (isset($paramsplit) && count($paramsplit) == 2)
+        $paramstr = $paramsplit[0].".".$ext.str_replace('/','%2F',str_replace(':','%3A',$paramsplit[1]));
+    }
+    
     if ($qp > $lenbase)
-      $this->params = explode( '/', substr($this->uri,$qp+1));
+      $this->params = explode( '/', $paramstr);
     else
       $this->params = array('');
-
-    $this->routes = array();
-    $this->persisted_vars = array();
-    $this->allowed_methods = array();
-    $this->groups = array();
-    $this->template_path = '';
-    $this->layout_path = '';
-    $this->error = false;
-    $this->openid_complete = false;
     
   }
   
@@ -250,13 +287,14 @@ class Mapper {
           // a named route was found
           if ($altparams == NULL)
             $params = $r->defaults;
-          return $r->build_url( $params, $this->base );
+          // XXX subdomain upgrade
+          return $r->build_url( $params, $this->base, $this->prefix );
         }
 //      } elseif ( is_array($params) && count( array_intersect( array_keys($vars), array_keys($params) ) ) == count( $vars ) && count($vars) == count($params) && count($r->patterns) == count($params) ) {
       } elseif ( is_array($params) && count( array_intersect( array_keys($vars), array_keys($params) ) ) == count( $vars ) && count($vars) == count($params)  ) {
         // every pattern in the route exists in the requested params
-
-        return $r->build_url( $params, $this->base );
+        // XXX subdomain upgrade
+        return $r->build_url( $params, $this->base, $this->prefix );
       } else {
         // eh
       }
@@ -281,8 +319,8 @@ class Mapper {
         }
         
         if ( count( array_intersect( array_keys($vars), array_keys($params) ) ) == count( $vars ) && count($vars) == count($params) ) {
-
-          return $r->build_url( $params, $this->base );
+          // XXX subdomain upgrade
+          return $r->build_url( $params, $this->base, $this->prefix );
         }
       
       } // end foreach routes
@@ -309,7 +347,10 @@ class Mapper {
     $links[] = '<a href="'. $this->base .'">Home</a>';
     
     if ( isset( $this->resource ) && ( $this->resource != 'introspection' ))
-      $links[] = '<a href="'. $this->base .'?'.$this->resource.'">'.ucwords($this->resource).'</a>';
+      if (pretty_urls())
+        $links[] = '<a href="'. $this->base .''.$this->resource.'">'.ucwords($this->resource).'</a>';
+      else
+        $links[] = '<a href="'. $this->base .'?'.$this->resource.'">'.ucwords($this->resource).'</a>';
     
     if ( ($this->id != 0) && isset( $this->resource ) && ( $this->resource != 'introspection' ))
        $links[] = '<a href="'.$this->entry_url($this->id).'">Entry '.ucwords($this->id).'</a>';
@@ -376,6 +417,9 @@ class Mapper {
       $result = is_file( $this->template_path . $this->resource . DIRECTORY_SEPARATOR. '_entry.js' );
     if (!$result)
       $result = is_file( $this->template_path . $this->resource . DIRECTORY_SEPARATOR. '_entry.html' );
+    if (isset($GLOBALS['PATH']['apps']))
+      foreach($GLOBALS['PATH']['apps'] as $k=>$v)
+        $result = file_exists($v['layout_path'].$this->resource . DIRECTORY_SEPARATOR. '_entry.html');
     if ($result && ($id != NULL))
       return $this->url_for( array('resource'=>$this->resource, 'action'=>'entry', 'id'=>$id));
     if ($result)
@@ -389,6 +433,9 @@ class Mapper {
       $result = is_file( $this->template_path . $this->resource . DIRECTORY_SEPARATOR. '_new.js' );
     if (!$result)
       $result = is_file( $this->template_path . $this->resource . DIRECTORY_SEPARATOR. '_new.html' );
+    if (isset($GLOBALS['PATH']['apps']))
+      foreach($GLOBALS['PATH']['apps'] as $k=>$v)
+        $result = file_exists($v['layout_path'].$this->resource . DIRECTORY_SEPARATOR. '_new.html');
     if ($result)
       return $this->url_for( array('resource'=>$this->resource, 'action'=>'new'));
     return $result;
@@ -400,6 +447,9 @@ class Mapper {
       $resource = $this->params['resource'] . DIRECTORY_SEPARATOR;
     else
       $resource = "";
+    
+    if (isset($this->templates_resource[$this->params['resource']]))
+      $resource = $this->templates_resource[$this->params['resource']] . DIRECTORY_SEPARATOR;
     
     if ($template == null) {
       $partial = false;
@@ -544,7 +594,8 @@ class Mapper {
       }
     }
     
-    if ( isset( $this->params['method'] ) ) $this->action = $this->method;
+    if ( isset( $this->params['method'] )
+    && !is_array($this->params['method']) ) $this->action = $this->method;
     
     if ( isset( $this->params['forward_to'] ) ) $this->controller = $this->forward_to;
     
@@ -597,6 +648,17 @@ class Mapper {
 
     while ( count( $params ) > count( $regx ) ) {
       array_shift( $params );
+    }
+    
+    if ($paramcount == 1) {
+      if (!(strpos($params[0], '&') === false)) {
+        $paramsplit = split("&",$params[0]);
+        $params[0] = $paramsplit[0];
+      }
+      if (!(strpos($params[0], '?') === false)) {
+        $paramsplit = split("?",$params[0]);
+        $params[0] = $paramsplit[0];
+      }
     }
     
     if ( count( $r->patterns ) == 0 ) {
@@ -686,6 +748,9 @@ class Mapper {
     }
   }
   
+  function use_templates_from( $resource, $model ) {
+    $this->templates_resource[$model] = $resource;
+  }
+  
 }
 
-?>

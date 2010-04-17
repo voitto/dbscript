@@ -83,7 +83,7 @@ class phpMicroformats {
       $result .= '<div class="vcard">'."\n";
       
     // name
-    $result .= '<span class="fn">'.$data['fn'].'</span>'."\n";
+    $result .= '<p class="fn">'.$data['fn'].'</p><br />'."\n\n";
 
     // email
     //$result .= '<span>Email: <a class="fn email" href="mailto:'.$data['email'].'">'.$data['email'].'</a></span>'."\n";

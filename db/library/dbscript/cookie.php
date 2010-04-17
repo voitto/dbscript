@@ -5,7 +5,7 @@
    * @version 0.6.0 -- 22-October-2008
    * @author Brian Hendrickson <brian@dbscript.net>
    * @link http://dbscript.net/
-   * @copyright Copyright 2008 Brian Hendrickson
+   * @copyright Copyright 2009 Brian Hendrickson
    * @package dbscript
    * @license http://www.opensource.org/licenses/mit-license.php MIT License
    */
@@ -61,6 +61,10 @@ class Cookie {
   var $validated = false;
  
   function Cookie() {
+    global $prefix;
+    if (environment('cookielife'))
+      $this->expiration = environment('cookielife');
+    $this->cookiename = $prefix.$this->cookiename;
     if (array_key_exists($this->cookiename, $_COOKIE)) {
       $buffer = $this->_unpackage($_COOKIE[$this->cookiename]);
     } else {

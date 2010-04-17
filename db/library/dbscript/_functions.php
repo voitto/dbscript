@@ -5,7 +5,7 @@
    * @version 0.6.0 -- 22-October-2008
    * @author Brian Hendrickson <brian@dbscript.net>
    * @link http://dbscript.net/
-   * @copyright Copyright 2008 Brian Hendrickson
+   * @copyright Copyright 2009 Brian Hendrickson
    * @package dbscript
    * @license http://www.opensource.org/licenses/mit-license.php MIT License
    */
@@ -26,6 +26,9 @@
 function classify( $resource ) {
   
   $inflector =& Inflector::getInstance();
+  
+  if (substr($resource,2,1) == '_')
+    $resouce = substr($resource,3);
   
   return $inflector->classify($resource);
   
@@ -77,26 +80,26 @@ function dbscript_error( $errno, $errstr, $errfile, $errline ) {
       if (isset($_GET['dbscript_xml_error_continue'])) {
         $xml = "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\n";
         $xml .= "<root>\n";
-        $xml .= "  <dbscript_error>Fatal error in line $errline of file $errfile<br>: $errstr</dbscript_error>\n";
+        $xml .= "  <dbscript_error>Fatal error in line $errline of file $errfile<br />: $errstr</dbscript_error>\n";
         $xml .= "</root>\n";
         print $xml;
       } elseif ($req->error) {
         $req->handle_error( $errstr );
-        print "<b>ERROR</b> [$errno] $errstr<br>\n";
-        print "  Fatal error in line $errline of file $errfile<br>\n";
-        print "Aborting...<br>\n";
+        print "<b>ERROR</b> [$errno] $errstr<br />\n";
+        print "  Fatal error in line $errline of file $errfile<br />\n";
+        print "Aborting...<br />\n";
       } else {
         print "<br /><br />$errstr<br /><br />\n";
         print "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<form><input type=\"submit\" value=\"&lt; &lt; Go Back\" onClick=\"JavaScript:document.history.back();\" /></form>";
         if (environment('debug_enabled'))
-          print "  Fatal error in line $errline of file $errfile<br>\n";
+          print "  Fatal error in line $errline of file $errfile<br />\n";
       }
       exit(1);
     case E_USER_WARNING:
-      print "<b>WARNING</b> [$errno] $errstr<br>\n";
+      print "<b>WARNING</b> [$errno] $errstr<br />\n";
       break;
     case E_USER_NOTICE:
-      print "<b>NOTICE</b> [$errno] $errstr<br>\n";
+      print "<b>NOTICE</b> [$errno] $errstr<br />\n";
   }
 }
 
@@ -124,7 +127,7 @@ function trigger_before( $func, &$obj_a, &$obj_b ) {
     $time_end = microtime_float();
     $time = $time_end - $exec_time;
     $diff = substr($time,1,5);
-    echo "$diff seconds <BR>$func ";
+    echo "$diff seconds <br />$func ";
   }
   if ( isset( $GLOBALS['ASPECTS']['before'][$func] ) ) {
     foreach( $GLOBALS['ASPECTS']['before'][$func] as $callback ) {
@@ -397,26 +400,62 @@ function introspect_tables() {
 
 
 function read_aws_blob( &$request, $value, $coll, $ext ) {
+  global $prefix;
   if (isset($coll[$request->resource])) {
     if ($coll[$request->resource]['location'] == 'aws')
-      redirect_to( 'http://' . environment('awsBucket') . '.s3.amazonaws.com/' . $request->resource . $request->id . "." . $ext );
+      redirect_to( 'http://' . environment('awsBucket') . '.s3.amazonaws.com/' . $prefix.$request->resource . $request->id . "." . $ext );
   }
 }
 
 
 function read_uploads_blob( &$request, $value, $coll, $ext ) {
+  if (!(isset($coll[$request->resource]))) {
+    // use posts location for metadata blobs
+    global $db;
+    $model =& $db->get_table($request->resource);
+    if (array_key_exists( 'target_id', $model->field_array ))
+      $coll[$request->resource]['location'] = $coll['posts']['location'];
+  }
   if (isset($coll[$request->resource])) {
     if ($coll[$request->resource]['location'] == 'uploads') {
       $file = 'uploads' . DIRECTORY_SEPARATOR . $request->resource . $request->id;
-      if (file_exists($file))
+      if (file_exists($file)) {
+        if (defined('MEMCACHED') && MEMCACHED ) {
+          global $response;
+          $timeout = MEMCACHED;
+          $cache = PCA::get_best_backend();
+          $cache->add($request->composite_uri(), file_get_contents( $file ), $timeout);
+          $cache->add($request->composite_uri().'type', type_of($response->pick_template_extension( $request )), $timeout);
+        }
         print file_get_contents( $file );
+      }
     }
   }
 }
 
 
+function exists_uploads_blob( $resource,$id ) {
+  $coll = environment('collection_cache');
+  if (isset($coll[$resource])) {
+    if ($coll[$resource]['location'] == 'uploads') {
+      $file = 'uploads' . DIRECTORY_SEPARATOR . $resource . $id;
+      if (file_exists($file))
+        return true;
+    }
+  }
+  return false;
+}
+
+
 function update_uploadsfile( $table, $id, $tmpfile ) {
   $coll = environment('collection_cache');
+  if (!(isset($coll[$table]))) {
+    // use posts location for metadata blobs
+    global $db;
+    $model =& $db->get_table($table);
+    if (array_key_exists( 'target_id', $model->field_array ))
+      $coll[$table]['location'] = $coll['posts']['location'];
+  }
   if (!(isset($coll[$table])))
     return;
   $uploadFile = $coll[$table]['location'].DIRECTORY_SEPARATOR.$table.$id;
@@ -462,6 +501,14 @@ function read_cache_blob( &$request, $value, $coll ) {
         fclose( $fp );
         unset( $fp );
         
+        if (defined('MEMCACHED') && MEMCACHED ) {
+          global $response;
+          $timeout = MEMCACHED;
+          $cache = PCA::get_best_backend();
+          $cache->add($request->composite_uri(), file_get_contents( $cacheFile ), $timeout);
+          $cache->add($request->composite_uri().'type', type_of($response->pick_template_extension( $request )), $timeout);
+        }
+
         print file_get_contents( $cacheFile );
         
         exit;
@@ -590,7 +637,7 @@ function fetch_blob( $value, $return ) {
   
 function template_exists( &$request, $extension, $template ) {
   #if ($template == 'introspection') print 'ye';
-  #print "template_exists $template ".$extension."<br>";
+  #print "template_exists $template ".$extension."<br />";
   
   $view = $request->get_template_path( $extension, $template );
   
@@ -649,14 +696,22 @@ function url_for( $params, $altparams = NULL ) {
   
 }
 
+function base_path($return = false) {
+  global $request;
+  $path = $request->values[1].$request->values[2].$request->path;
+  if ($return)
+    return $path;
+  echo $path;
+}
 
 function base_url($return = false) {
 
   global $request;
   global $pretty_url_base;
   
+  // XXX subdomain upgrade
   if (isset($pretty_url_base) && !empty($pretty_url_base))
-    $base = $pretty_url_base;
+    $base = $pretty_url_base."/".$request->prefix;
   else
     $base = $request->base;
   
@@ -670,6 +725,29 @@ function base_url($return = false) {
   
 }
 
+// XXX subdomain upgrade
+function blog_url($nickname,$return = false) {
+  global $request;
+  if (pretty_urls() && environment('subdomains')) {
+	  global $prefix;
+	  if (!empty($prefix))
+	    $base = 'http://' . $request->domain;
+  	else
+      $base = 'http://'.$nickname . '.' . $request->domain;
+  } else {
+    $q = '?';
+    if (pretty_urls())
+      $q = '';
+    $base = base_url(true).$q.'twitter/'.$nickname;
+  }
+  if ( !( substr( $base, -1 ) == '/' ))
+    $base = $base . "/";
+  if ($return)
+    return $base;
+  else
+    echo $base;
+}
+
   /**
    * Redirect To
    * 
@@ -681,7 +759,9 @@ function base_url($return = false) {
 
 function redirect_to( $param, $altparam = NULL ) {
   
-  global $request;
+  global $request,$db;
+  
+  trigger_before( 'redirect_to', $request, $db );
   
   if (is_ajax()){
     echo "OK";
@@ -704,6 +784,20 @@ function type_of( $file ) {
   
 }
 
+function type_of_image( $file ) {
+  
+  if (is_jpg($file))
+    return 'jpg';
+    
+  if (is_png($file))
+    return 'png';
+    
+  if (is_gif($file))
+    return 'gif';
+  
+  return false;
+  
+}
 
 function extension_for( $type ) {
   
@@ -853,25 +947,24 @@ function member_of( $group ) {
     $memberships = array();
 
     global $request;
-  
-
-  
     global $db;
   
     $Person =& $db->model('Person');
     $Group =& $db->model('Group');
-  
-    $p = $Person->find( get_person_id() );
-  
-    while ( $m = $p->NextChild( 'memberships' )) {
-      $g = $Group->find( $m->group_id );
-      $memberships[] = $g->name;
     
-      if (!$g)
-        trigger_error( "the Group with id ".$m->group_id." does not exist", E_USER_ERROR );
-      if ( $g->name == $group )
-        return true;
-    }
+    $p = $Person->find( get_person_id() );
+    if ($p)
+      while ( $m = $p->NextChild( 'memberships' )) {
+        $g = $Group->find( $m->group_id );
+        $memberships[] = $g->name;
+    
+        if (!$g)
+          trigger_error( "the Group with id ".$m->group_id." does not exist", E_USER_ERROR );
+        if ( $g->name == $group )
+          return true;
+      }
+    else
+      return false;
   
   } else {
     
@@ -887,9 +980,9 @@ function member_of( $group ) {
 
 // add_include_path by ricardo dot ferro at gmail dot com
 
-function add_include_path($path) {
-    foreach (func_get_args() AS $path)
-    {
+function add_include_path($path,$prepend = false) {
+    //foreach (func_get_args() AS $path)
+    //{
         if (!file_exists($path) OR (file_exists($path) && filetype($path) !== 'dir'))
         {
             trigger_error("Include path '{$path}' not exists", E_USER_WARNING);
@@ -898,17 +991,19 @@ function add_include_path($path) {
         
         $paths = explode(PATH_SEPARATOR, get_include_path());
         
+        if (array_search($path, $paths) === false && $prepend)
+            array_unshift($paths, $path);
         if (array_search($path, $paths) === false)
             array_push($paths, $path);
         
         set_include_path(implode(PATH_SEPARATOR, $paths));
-    }
+    //}
 }
 
 
 function send_email( $sendto, $subject, $content, $fromemail="", $fromname="", $html=false ) {
   
-  if ($fromemail == 'root@localhost' && $fromname == 'Notifier')
+  if (in_array($fromemail,array('','root@localhost')) || !is_email($fromemail) || empty($fromname))
     return;
   
   require_once(library_path().'xpertmailer'.DIRECTORY_SEPARATOR.'MAIL.php'); 
@@ -968,11 +1063,8 @@ function render_partial( $template ) {
   $response->render_partial( $request, $template );
   
 }
+
 function add_filter($tag, $function_to_add, $priority = 10, $accepted_args = 1) {
-	global $wp_filter, $merged_filters;
-	$idx = _wp_filter_build_unique_id($tag, $function_to_add, $priority);
-  $wp_filter[$tag][$priority][$idx] = array('function' => $function_to_add, 'accepted_args' => $accepted_args);
-	unset( $merged_filters[ $tag ] );
 	return true;
 }
 
@@ -1040,10 +1132,14 @@ function render_theme( $theme ) {
   
   $wpmode = "posts";
   
-  if ($request->resource != 'posts' || !($request->action == 'index')) {
+  if ($request->resource != 'posts' || !(in_array($request->action,array('replies','index')))) {
     $wpmode = "other";
+    if (is_file($folder . "functions.php" ))
+      require_once( $folder . "functions.php" );
     require_once( $folder . "page.php" );
   } else {
+    if (is_file($folder . "functions.php" ))
+      require_once( $folder . "functions.php" );
     if ( file_exists( $folder . "index.php" ))
       require_once( $folder . "index.php" );
     else
@@ -1069,6 +1165,12 @@ function theme_path($noslash = false) {
     $path = substr($path,0,-1);
 
   return $path;
+  
+}
+
+function theme_dir(){
+  
+  return $GLOBALS['PATH']['themes'] . environment('theme') . DIRECTORY_SEPARATOR;
   
 }
 
@@ -1103,9 +1205,32 @@ function register_type( $arr ) {
 }
 
 
-function photoCreateCropThumb ($p_thumb_file, $p_photo_file, $p_max_size, $p_quality = 100) {
+function photoCreateCropThumb ($p_thumb_file, $p_photo_file, $p_max_size, $p_quality = 100, $tmpfile = null ) {
   
-  $pic = imagecreatefromjpeg($p_photo_file);
+  if ($tmpfile == null)
+    $ext = 'jpg';
+  else
+    $ext = type_of_image($tmpfile);
+  
+  if ($ext == 'jpg')
+    $pic = imagecreatefromjpeg($p_photo_file);
+  if ($ext == 'gif')
+    $pic = imagecreatefromgif($p_photo_file);
+  if ($ext == 'png'){
+    
+    $image = imagecreatefromstring(file_get_contents($p_photo_file));
+    $width = imagesx($image);
+    $height = imagesy($image);
+    unset($image);
+    $size = getimagesize($p_photo_file);
+    $required_memory = Round($width * $height * $size['bits']) +500000;
+    unset($size);
+    $new_limit=memory_get_usage() + $required_memory;
+    ini_set("memory_limit", $new_limit);
+    
+    $pic = imagecreatefrompng($p_photo_file);
+    
+  }
   
   if ($pic) {
     $thumb = imagecreatetruecolor ($p_max_size, $p_max_size);
@@ -1123,7 +1248,17 @@ function photoCreateCropThumb ($p_thumb_file, $p_photo_file, $p_max_size, $p_qua
       imagecopyresized($thumb, $pic, 0, 0, ($width/2)-($height/2), 0, $twidth, $theight, $width, $height); 
     }
     
-    imagejpeg($thumb, $p_thumb_file, $p_quality);
+    if ($ext == 'jpg')
+      imagejpeg($thumb, $p_thumb_file, $p_quality);
+      
+    if ($ext == 'gif')
+      imagegif($thumb, $p_thumb_file);
+      
+    if ($ext == 'png') {
+      imagepng($thumb, $p_thumb_file);
+      ini_restore("memory_limit");
+    }
+    
   }
   
 }
@@ -1216,6 +1351,11 @@ function wp_plugin_include( $file, $basedir=NULL ) {
       require_once $startfile;
       return;
     }
+    $startfile = $wp_plugins.DIRECTORY_SEPARATOR.'plugin.php';
+    if (is_file($startfile)) {
+      require_once $startfile;
+      return;
+    }
   }
 
   
@@ -1249,6 +1389,8 @@ function wp_plugin_include( $file, $basedir=NULL ) {
    */
 
 function lib_include( $file ) {
+  if ($file == 'json' && class_exists('Services_JSON'))
+    return;
   if (is_array($file)) {
     foreach($file as $f) {
       if (file_exists(library_path() . $f . ".php"))
@@ -1262,7 +1404,9 @@ function lib_include( $file ) {
 
 
 function load_plugin( $plugin ) {
-  
+	
+	global $request,$db;
+  trigger_before('load_plugin',$db,$request);
   $plugin_paths = array();
   
   if (isset($GLOBALS['PATH']['app_plugins']))
@@ -1484,6 +1628,14 @@ function public_resource() {
     return true;  
   
   $datamodel =& $db->get_table($req->resource);
+
+  $action = $request->action;
+
+  if ( !( in_array( $action, $datamodel->allowed_methods, true )))
+    $action = 'get';
+  
+  if (!($action == 'get'))
+    return false;
   
   if (!(isset($datamodel->access_list['read']['id'])))
     return false;
@@ -1632,9 +1784,10 @@ function get_profile($id=NULL) {
   if ($p) {
     $i = $p->FirstChild('identities');
     if ($i)
+      $response->named_vars['profile'] = $i;
+    if ($i)
       return $i;
   }
-  
   return false;
 }
 
@@ -1645,6 +1798,11 @@ function get_profile_id() {
   
   return $profile->id;
   
+}
+
+function return_ok() {
+  header( 'Status: 200 OK' );
+  exit;
 }
 
 
@@ -1659,7 +1817,7 @@ function get_profile_id() {
 
 function get_person_id() {
   
-  global $response;
+  global $response,$request;
   
   if (isset($response->named_vars['profile'])) {
     $i = $response->named_vars['profile'];
@@ -1667,10 +1825,47 @@ function get_person_id() {
       return $i->person_id;
   }
   
-  $p = get_cookie_id();
+  if (isset($_SERVER['PHP_AUTH_USER'])) {
+    global $person_id;
+    if ($person_id) {
+      before_filter( 'return_ok', 'redirect_to' );
+      return $person_id;
+    }
+  }
   
+  $p = get_cookie_id();
+
   if ($p)
     return $p;
+  
+  if (isset($_SESSION['fb_person_id'])
+  && $_SESSION['fb_person_id'] >0) {
+    return $_SESSION['fb_person_id'];
+  }
+
+  if (isset($_SESSION['oauth_person_id'])
+  && $_SESSION['oauth_person_id'] >0) {
+    return $_SESSION['oauth_person_id'];
+  }
+  
+  if (isset($_SERVER['PHP_AUTH_USER'])) {
+	  global $person_id;
+	  if ($person_id)
+	    return $person_id;
+  }
+
+  if (isset($_POST['auth']) && $_POST['auth'] == 'omb')
+    authenticate_with_omb();
+
+  if (isset($_POST['auth']) && $_POST['auth'] == 'oauth')
+    authenticate_with_oauth();
+  
+  global $person_id;
+
+  if ($person_id) {
+    before_filter( 'return_ok', 'redirect_to' );
+    return $person_id;
+  }
   
   return 0;
   
@@ -1975,7 +2170,7 @@ function unzip($dir, $file, $verbose = 0) {
                      $name = "$dir_path/$name"; 
                      
                      if ($verbose)
-                       echo "extracting: $name<br>";
+                       echo "extracting: $name<br />";
                        
                    $stream = fopen($name, "w");
                    fwrite($stream, $data);
@@ -2084,33 +2279,37 @@ function resource_group_members( $gid=NULL ) {
   
 }
 
+function _t($t) {
+  return $t;
+}
 
-function laconica_time($dt) {
-  
-  $t = strtotime($dt);
+function laconica_time($ts) {
+  include 'wp-content/language/lang_chooser.php'; //Loads the language-file
+
+  $t = strtotime($ts);
 	$now = time();
 	$diff = $now - $t;
 
 	if ($diff < 60) {
-		return _t('a few seconds ago');
+		return _t($txt['functions_few_seconds']);
 	} else if ($diff < 92) {
-		return _t('about a minute ago');
+		return _t($txt['functions_about_a_minute']);
 	} else if ($diff < 3300) {
-		return _t('about ') . round($diff/60) . _t(' minutes ago');
+		return _t($txt['functions_about_mins_1']) . round($diff/60) . _t($txt['functions_about_mins_2']);
 	} else if ($diff < 5400) {
-		return _t('about an hour ago');
+		return _t($txt['functions_about_an_hour']);
 	} else if ($diff < 22 * 3600) {
-		return _t('about ') . round($diff/3600) . _t(' hours ago');
+		return _t($txt['functions_about_hours_1']) . round($diff/3600) . _t($txt['functions_about_hours_2']);
 	} else if ($diff < 37 * 3600) {
-		return _t('about a day ago');
+		return _t($txt['functions_about_a_day']);
 	} else if ($diff < 24 * 24 * 3600) {
-		return _t('about ') . round($diff/(24*3600)) . _t(' days ago');
+		return _t($txt['functions_about_days_1']) . round($diff/(24*3600)) . _t($txt['functions_about_days_2']);
 	} else if ($diff < 46 * 24 * 3600) {
-		return _t('about a month ago');
+		return _t($txt['functions_about_a_month']);
 	} else if ($diff < 330 * 24 * 3600) {
-		return _t('about ') . round($diff/(30*24*3600)) . _t(' months ago');
+		return _t($txt['functions_about_months_1']) . round($diff/(30*24*3600)) . _t($txt['functions_about_months_2']);
 	} else if ($diff < 480 * 24 * 3600) {
-		return _t('about a year ago');
+		return _t($txt['functions_about_a_year']);
 	}
 }
 
@@ -2283,14 +2482,18 @@ function ajax_put_field( &$model, &$rec ) {
 
 function migrate() {
   
-  global $db;
+  global $db,$request;
   
   $db->just_get_objects();
   
   foreach($db->models as $model)
-    $model->migrate();
+    if ($model){
+      $model->migrate();
+	    if (method_exists( $model, 'init' ))
+	      $model->init();
+    }
   
-  echo "<BR>The database schema is now synched to the data models.<BR><BR>";
+  echo "<br />The database schema is now synced to the data models. <a href=\"".$request->url_for('admin')."\">Return to Admin</a><br /><br />";
   exit;
   
 }
@@ -2325,7 +2528,7 @@ function app_profile_show($resource,$action) {
   echo '// <![CDATA['."\n\n";
   echo '  $(document).ready(function() {'."\n\n";
   echo "  var url = '".$request->url_for(array('resource'=>$resource,'action'=>$action))."' + '/partial';"."\n\n";
-  echo '  $("#'.$resource.'_profile").html("<img src=\'resource/jeditable/indicator.gif\'>");'."\n\n";
+  echo '  $("#'.$resource.'_profile").html("<img src=\''.base_path(true).'resource/jeditable/indicator.gif\'>");'."\n\n";
   echo '  $.get(url, function(str) {'."\n\n";
   echo '    $("#'.$resource.'_profile").html(str);'."\n\n";
   echo '  });'."\n\n";
@@ -2375,22 +2578,27 @@ function get_nav_links() {
     
     $links["Personal"] = $request->url_for(array(
         "resource"=>"posts",
-        "byid"=>$i->id,
+        "forid"=>$i->id,
         "page"=>1 ));
     
     if (empty($i->post_notice))
       $links["Profile"] = $request->url_for(array("resource"=>$i->nickname));
     else
       $links["Profile"] = $i->profile;
+
+    if (empty($i->post_notice))
+      $links["@".$i->nickname] = $request->url_for(array("resource"=>$i->nickname))."/replies";
+    else
+      $links["@".$i->nickname] = $i->profile."/replies";
       
   }
   
   if ($pid > 0) {
     
     if (member_of('administrators'))
-      $links["Site Admin"] = $request->url_for(array('resource'=>'admin'));
+      $links["Admin"] = $request->url_for(array('resource'=>'admin'));
     
-    $links["Write Post"] = $request->url_for(array('resource'=>'posts','action'=>'new'));
+    $links["Upload"] = $request->url_for(array('resource'=>'posts','action'=>'upload'));
     
     $links["Logout"] = $request->url_for("openid_logout");
   
@@ -2410,12 +2618,26 @@ function get_app_id() {
   global $db;
   
   global $request;
-  
-  if (!($request->resource == 'identities'))
-    if (get_profile_id())
-      return get_profile_id();
-    else
-      return false;
+
+  $id = false;
+
+  if (!($request->resource == 'identities')) {
+	
+    if ($request->params['byid'] > 0)
+      $id = $request->params['byid'];
+    elseif ($request->params['forid'] > 0)
+      $id = $request->params['forid'];
+    elseif (get_profile_id())
+      $id = get_profile_id();
+    
+    if ($id && !(strpos($id,".") === false )) {
+			$parts = split('\.',$id);
+			$id = $parts[0];	    
+    }
+    
+    return $id;
+
+  }
   
   // looking some profile page
   // load its apps
@@ -2442,10 +2664,14 @@ function load_apps() {
   
   // enable wp-style callback functions
   
-  global $db,$request;
+  global $db,$request,$env;
+  
+  if (in_array($request->action,array(
+    'replies','following','followers'
+  ))) return;
   
   $identity = get_app_id();
-  
+
   if (!$identity)
     return;
 
@@ -2454,12 +2680,21 @@ function load_apps() {
   
   $i = $Identity->find($identity);
   
+  $activated = array();
+  
   while ($s = $i->NextChild('settings')){
     $s = $Setting->find($s->id);
-    if ($s->name == 'app')
+    if ($s->name == 'app') {
       app_init( $s->value );
+      $activated[] = $s->value;
+    }
   }
-  
+  if (isset($env['installed'])){
+    $list = $env['installed'];
+    foreach($list as $app)
+      if (!in_array($app,$activated))
+        app_init( $app );
+  }
   global $current_user;
   trigger_before( 'init', $current_user, $current_user );
   
@@ -2516,5 +2751,734 @@ function array_sort($array, $key, $max=false)
    return $sorted_arr; 
 } 
 
+global $timezone_offsets;
+$timezone_offsets = array(
+  '-12'    =>  'Baker Island',
+  '-11'    =>  'Niue, Samoa',
+  '-10'    =>  'Hawaii-Aleutian, Cook Island',
+  '-9.5'   =>  'Marquesas Islands',
+  '-9'     =>  'Alaska, Gambier Island',
+  '-8'     =>  'Pacific',
+  '-7'     =>  'Mountain',
+  '-6'     =>  'Central',
+  '-5'     =>  'Eastern',
+  '-4'     =>  'Atlantic',
+  '-3.5'   =>  'Newfoundland',
+  '-3'     =>  'Amazon, Central Greenland',
+  '-2'     =>  'Fernando de Noronha, South Georgia',
+  '-1'     =>  'Azores, Cape Verde, Eastern Greenland',
+  '0'      =>  'Western European, Greenwich Mean',
+  '+1'     =>  'Central European, West African',
+  '+2'     =>  'Eastern European, Central African',
+  '+3'     =>  'Moscow, Eastern African',
+  '+3.5'   =>  'Iran',
+  '+4'     =>  'Gulf, Samara',
+  '+4.5'   =>  'Afghanistan',
+  '+5'     =>  'Pakistan, Yekaterinburg',
+  '+5.5'   =>  'Indian, Sri Lanka',
+  '+5.75'  =>  'Nepal',
+  '+6'     =>  'Bangladesh, Bhutan, Novosibirsk',
+  '+6.5'   =>  'Cocos Islands, Myanmar',
+  '+7'     =>  'Indochina, Krasnoyarsk',
+  '+8'     =>  'Chinese, Australian Western, Irkutsk',
+  '+8.75'  =>  'Southeastern Western Australia',
+  '+9'     =>  'Japan, Korea, Chita',
+  '+9.5'   =>  'Australian Central',
+  '+10'    =>  'Australian Eastern, Vladivostok',
+  '+10.5'  =>  'Lord Howe',
+  '+11'    =>  'Solomon Island, Magadan',
+  '+11.5'  =>  'Norfolk Island',
+  '+12'    =>  'New Zealand, Fiji, Kamchatka',
+  '+12.75' =>  'Chatham Islands',
+  '+13'    =>  'Tonga, Phoenix Islands',
+  '+14'    =>  'Line Island'
+);
 
-?>
+function pretty_urls() {
+  global $pretty_url_base;
+  if (isset($pretty_url_base) && !empty($pretty_url_base))
+    return true;
+  return false;
+}
+
+function setting($name) {
+  if (!signed_in())
+    return false;
+  global $db;
+  global $ombsettings;
+  if (!is_array($ombsettings))
+    $ombsettings = array();
+  if (isset($ombsettings[$name]))
+    return $ombsettings[$name];
+  $Setting =& $db->model('Setting');
+  $sett = $Setting->find_by(array('name'=>$name,'profile_id'=>get_profile_id()));
+  if ($sett) {
+    $ombsettings[$name] = $sett->value;
+    return $ombsettings[$name];
+  }
+  $ombsettings[$name] = false;
+  return false;
+}
+
+function profile_setting($name) {
+  global $db;
+  $Setting =& $db->model('Setting');
+  $sett = $Setting->find_by(array('name'=>$name,'profile_id'=>get_app_id()));
+  if ($sett)
+    return $sett->value;
+  return false;
+}
+
+function md5_encrypt($plain_text, $password, $iv_len = 16){
+  $plain_text .= "\x13";
+  $n = strlen($plain_text);
+  if ($n % 16) $plain_text .= str_repeat("\0", 16 - ($n % 16));
+  $i = 0;
+  $enc_text = get_rnd_iv($iv_len);
+  $iv = substr($password ^ $enc_text, 0, 512);
+  while ($i < $n) {
+    $block = substr($plain_text, $i, 16) ^ pack('H*', md5($iv));
+    $enc_text .= $block;
+    $iv = substr($block . $iv, 0, 512) ^ $password;
+    $i += 16;
+  }
+  return base64_encode($enc_text);
+}
+
+function md5_decrypt($enc_text, $password, $iv_len = 16){
+  $enc_text = base64_decode($enc_text);
+  $n = strlen($enc_text);
+  $i = $iv_len;
+  $plain_text = '';
+  $iv = substr($password ^ substr($enc_text, 0, $iv_len), 0, 512);
+  while ($i < $n) {
+    $block = substr($enc_text, $i, 16);
+    $plain_text .= $block ^ pack('H*', md5($iv));
+    $iv = substr($block . $iv, 0, 512) ^ $password;
+    $i += 16;
+  }
+  return preg_replace('/\\x13\\x00*$/', '', $plain_text);
+}
+
+function get_rnd_iv($iv_len){
+  $iv = '';
+  while ($iv_len-- > 0) {
+    $iv .= chr(mt_rand() & 0xff);
+  }
+  return $iv;
+}
+
+function curl_redir_exec( $ch ) {
+  
+  $curl_loops = 0;
+  
+  $curl_max_loops = 20;
+  
+  if ($curl_loops++ >= $curl_max_loops) {
+    $curl_loops = 0;
+    return FALSE;
+  }
+  
+  curl_setopt( $ch, CURLOPT_HEADER, true );
+  
+  curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true );
+  
+  $data = curl_exec( $ch );
+  
+  list( $header, $data ) = explode( "\n\n", $data, 2 );
+  
+  $http_code = curl_getinfo( $ch, CURLINFO_HTTP_CODE );
+  
+  if ( $http_code == 301 || $http_code == 302 ) {
+    
+    $matches = array();
+    
+    preg_match('/Location:(.*?)\n/', $header, $matches);
+    
+    $url = @parse_url(trim(array_pop($matches)));
+    
+    if (!$url) {
+      //couldn't process the url to redirect to
+      $curl_loops = 0;
+      return $data;
+    }
+    
+    $last_url = parse_url( curl_getinfo( $ch, CURLINFO_EFFECTIVE_URL ));
+    
+    if (!$url['scheme'])
+      $url['scheme'] = $last_url['scheme'];
+    
+    if (!$url['host'])
+      $url['host'] = $last_url['host'];
+    
+    if (!$url['path'])
+      $url['path'] = $last_url['path'];
+    
+    $new_url = $url['scheme'] . '://' . $url['host'] . $url['path'] . ($url['query']?'?'.$url['query']:'');
+    
+    curl_setopt( $ch, CURLOPT_URL, $new_url );
+    
+    return curl_redir_exec( $ch );
+  
+  } else {
+    
+    $curl_loops=0;
+    
+    return $data;
+    
+  }
+}
+
+function set_tz_by_offset($offset) {
+  $offset = $offset * 3600;
+  $abbrarray = timezone_abbreviations_list();
+  foreach ($abbrarray as $abbr) {
+    foreach ($abbr as $city) {
+      if ($city['offset'] == $offset) { // remember to multiply $offset by -1 if you're getting it from js
+        date_default_timezone_set($city['timezone_id']);
+        return true;
+      }
+    }
+  }
+  date_default_timezone_set("ust");
+  return false;
+}
+
+
+function setting_widget_text_helper($nam,$nammode,$namurl,$namentry) {
+  global $request;
+    echo '
+      var submit_to'.$nam.' = "'. $namurl.'";
+
+      $(".jeditable_'.$nam.'").mouseover(function() {
+          $(this).highlightFade({end:\'#def\'});
+      });
+      $(".jeditable_'.$nam.'").mouseout(function() {
+          $(this).highlightFade({end:\'#fff\', speed:200});
+      });
+      $(".jeditable_'.$nam.'").editable(submit_to'.$nam.', {
+          indicator   : "<img src=\''. base_path(true).'resource/jeditable/indicator.gif\'>",
+          submitdata  : function() {
+            return {"entry[etag]" : "'.$namentry->etag.'"};
+          },
+          name        : "setting[value]",
+          type        : "textarea",
+          noappend    : "true",
+          submit      : "OK",
+          tooltip     : "Click to edit...",
+          cancel      : "Cancel",
+          callback    : function(value, settings) {
+            return(value);
+          }
+      });  ';
+};
+
+function setting_widget_text_post_helper($nam,$namurl) {
+  global $request;
+    echo '
+      var submit_to'.$nam.' = "'. $namurl.'";
+
+      $(".jeditable_'.$nam.'").mouseover(function() {
+          $(this).highlightFade({end:\'#def\'});
+      });
+      $(".jeditable_'.$nam.'").mouseout(function() {
+          $(this).highlightFade({end:\'#fff\', speed:200});
+      });
+      $(".jeditable_'.$nam.'").editable(submit_to'.$nam.', {
+          indicator   : "<img src=\''. base_path(true).'resource/jeditable/indicator.gif\'>",
+          submitdata  : function() {
+            return {"setting[name]" : "'.'config.env.'.$nam.'"};
+          },
+          name        : "setting[value]",
+          type        : "textarea",
+          noappend    : "true",
+          submit      : "OK",
+          tooltip     : "Click to edit...",
+          cancel      : "Cancel",
+          callback    : function(value, settings) {
+            return(value);
+          }
+      });  ';
+};
+
+function tinymce_widget_text_post_helper($nam,$namurl,$post,$field,$namentry) {
+echo '
+var submit_to'.$nam.' = "'. $namurl.'";
+$(".jeditable_'.$nam.'").editable(submit_to'.$nam.', { 
+  indicator   : "<img src=\''. base_path(true).'resource/jeditable/indicator.gif\'>",
+  submitdata  : function() {
+    return {"method":"put","entry[etag]" : "'.$namentry->etag.'"};
+  },
+  name        : "'.$post.'['.$field.']",
+  type        : "mce",
+  noappend    : "true",
+	width 			: "500px",
+	height 			: "100px",
+  submit      : "OK",
+  tooltip     : "Click to edit...",
+  cancel      : "Cancel",
+  callback    : function(value, settings) {
+    return(value);
+  }
+});
+';
+return;
+    echo '
+      var submit_to'.$nam.' = "'. $namurl.'";
+
+      $(".jeditable_'.$nam.'").editable(submit_to'.$nam.', {
+          indicator   : "<img src=\''. base_path(true).'resource/jeditable/indicator.gif\'>",
+          submitdata  : function() {
+            return {"method":"put","entry[etag]" : "'.$namentry->etag.'"};
+          },
+          name        : "'.$post.'['.$field.']",
+          type        : "mce",
+          noappend    : "true",
+					width 			: "500px",
+					height 			: "100px",
+          submit      : "OK",
+          tooltip     : "Click to edit...",
+          cancel      : "Cancel",
+          callback    : function(value, settings) {
+            return(value);
+          }
+      });  ';
+};
+
+function setting_widget_helper($nam,$nammode,$namurl,$namentry,$listdata) {
+  if (!class_exists("Services_JSON")) lib_include("json"); $json = new Services_JSON(); 
+  global $request;
+  echo '
+      var submit_to'.$nam.' = "'. $namurl.'";
+
+      $(".jeditable_'.$nam.'").mouseover(function() {
+          $(this).highlightFade({end:\'#def\'});
+      });
+      $(".jeditable_'.$nam.'").mouseout(function() {
+          $(this).highlightFade({end:\'#fff\', speed:200});
+      });
+      $(".jeditable_'.$nam.'").editable(submit_to'.$nam.', {
+          indicator   : "<img src=\''. base_path(true).'resource/jeditable/indicator.gif\'>",
+             data     : \''
+     .$json->encode( $listdata ).
+     '\',
+          submitdata  : function() {
+            return {"entry[etag]" : "'.$namentry->etag.'"};
+          },
+          name        : "setting[value]",
+          type        : "select",
+          placeholder : "'.placeholder_value($nammode,$listdata).'",
+          noappend    : "true",
+          submit      : "OK",
+          tooltip     : "Click to edit...",
+          cancel      : "Cancel",
+          callback    : function(value, settings) {
+            $(this).html(settings[\'jsonarr\'][value-0]);
+            return(value);
+          }
+      });  ';
+  
+}
+
+function placeholder_value(&$setting,$listdata) {
+  if ($listdata[0] == 'false' && $listdata[1] == 'true')
+    return $listdata[$setting->value];
+  return $setting->value;
+}
+
+function authenticate_with_omb() {
+  //
+}
+
+function authenticate_with_http() {
+  global $db,$request;
+  global $person_id;
+  global $api_methods,$api_method_perms;
+  
+  if (array_key_exists($request->action,$api_method_perms)) {
+    $arr = $api_method_perms[$request->action];
+    if ($db->models[$arr['table']]->can($arr['perm']))
+      return;
+  }
+  
+  if (!isset($_SERVER['PHP_AUTH_USER'])) {
+    header('WWW-Authenticate: Basic realm="your username/password"');
+  } else {
+    $Identity =& $db->get_table( 'identities' );
+    $Person =& $db->get_table( 'people' );
+    $i = $Identity->find_by(array(
+      'nickname'=>$_SERVER['PHP_AUTH_USER'],
+      'password'=>md5($_SERVER['PHP_AUTH_PW'])
+    ),1);
+    $p = $Person->find( $i->person_id );
+    if (!(isset( $p->id ) && $p->id > 0)) {
+      header('HTTP/1.1 401 Unauthorized');
+      echo 'BAD LOGIN';
+      exit;
+    }
+    $person_id = $p->id;
+  }
+}
+function authenticate_with_oauth() {
+  //
+}
+
+function mu_url() {
+  global $request;
+  if ((!strpos($request->uri, 'ak_twitter/') && strpos($request->uri, '?twitter/')) ||
+(strpos($request->uri, 'ak_twitter/') && strpos($request->uri, '?twitter/')))
+    return true;
+  return false;
+}
+
+function mb_unserialize($serial_str) {
+  $out = preg_replace('!s:(\d+):"(.*?)";!se', "'s:'.strlen('$2').':\"$2\";'", $serial_str );
+  return unserialize($out);    
+}
+
+
+
+function handle_posted_file($filename="",$att,$profile) {
+
+	
+  global $db,$request,$response;
+
+	$response->set_var('profile',$profile);
+	
+	load_apps();
+
+	if (isset($_FILES['media']['tmp_name']))
+		$table = 'uploads';
+	else
+	  $table = 'posts';
+
+  $modelvar = classify($table);
+
+	$_FILES = array(
+	  strtolower($modelvar) => array( 
+	    'name' => array( 'attachment' => $filename ),
+	    'tmp_name' => array( 'attachment' => $att )
+	));
+
+	$Post =& $db->model( 'Post' );
+  $Upload =& $db->model( 'Upload' );
+
+	$field = 'attachment';
+
+  $request->set_param('resource',$table);
+
+	$request->set_param( array( strtolower(classify($table)), $field ), 
+	  $att );
+
+	trigger_before( 'insert_from_post', $$modelvar, $request );
+
+	$content_type = 'text/html';
+	$rec = $$modelvar->base();
+	$content_type = type_of( $filename );
+	$rec->set_value('profile_id',get_profile_id());
+	$rec->set_value( 'parent_id', 0 );
+	if (isset($request->params['message']))
+		$rec->set_value( 'title', $request->params['message'] );
+	else
+	  $rec->set_value( 'title', '' );
+	$upload_types = environment('upload_types');
+	if (!$upload_types)
+	  $upload_types = array('jpg','jpeg','png','gif');
+	$ext = extension_for( type_of($filename));
+	if (!(in_array($ext,$upload_types)))
+	  trigger_error('Sorry, this site only allows the following file types: '.implode(',',$upload_types), E_USER_ERROR);
+	   $rec->set_value( $field, $att );
+	$rec->save_changes();
+	$tmp = $att;
+	if (is_jpg($tmp)) {
+	  $thumbsize = environment('max_pixels');
+	  $Thumbnail =& $db->model('Thumbnail');
+	  $t = $Thumbnail->base();
+	  $newthumb = tempnam( "/tmp", "new".$rec->id.".jpg" );
+	  resize_jpeg($tmp,$newthumb,$thumbsize);
+	  $t->set_value('target_id',$atomentry->id);
+	  $t->save_changes();
+	  update_uploadsfile( 'thumbnails', $t->id, $newthumb );
+	  $t->set_etag();
+	}
+	
+	$atomentry = $$modelvar->set_metadata($rec,$content_type,$table,'id');
+
+	$$modelvar->set_categories($rec,$request,$atomentry);
+	
+	$url = $request->url_for(array(
+	  'resource'=>$table,
+	  'id'=>$rec->id
+	));
+	
+//	$title = substr($rec->title,0,140);
+	
+//	$over = ((strlen($title) + strlen($url) + 1) - 140);
+	
+//	if ($over > 0)
+//	  $rec->set_value('title',substr($title,0,-$over)." ".$url);
+//	else
+//	  $rec->set_value('title',$title." ".$url);
+	
+//	$rec->save_changes();
+	
+	trigger_after( 'insert_from_post', $$modelvar, $rec );
+	
+	return true;
+	
+}
+
+function ent2ncr($text) {
+  return $text;
+}
+
+function esc_html($text) {
+	return $text;
+}
+
+function wp_remote_post( $url, $paramarr ){
+
+	return wp_remote_get( $url, $paramarr, true );
+
+}
+
+function esc_url($url){
+	return urlencode($url);
+}
+
+function wp_remote_get( $url, $paramarr, $post=false ){
+
+  $method = $paramarr['method'];
+  $timeout = $paramarr['timeout'];
+  $agent = $paramarr['user-agent'];
+  $port = $paramarr['port'];
+
+	$ch = curl_init();
+	curl_setopt ($ch, CURLOPT_URL, $url);
+	curl_setopt ($ch, CURLOPT_HEADER, 0); /// Header control
+	curl_setopt ($ch, CURLOPT_PORT, $port);
+	if ($post){
+	  curl_setopt ($ch, CURLOPT_POST, true);  /// tell it to make a POST, not a GET
+  	curl_setopt ($ch, CURLOPT_POSTFIELDS, $paramarr['body']);
+ 	}
+  curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, false);
+   curl_setopt( $curl, CURLOPT_TIMEOUT, $timeout);
+   curl_setopt($ch, CURLOPT_USERAGENT, $agent);
+	curl_setopt ($ch, CURLOPT_RETURNTRANSFER, 1);
+	$xml_response = curl_exec ($ch);
+	$response = curl_getinfo( $ch );
+  curl_close ( $ch );
+  $result = array();
+  $result['response'] = array('code'=>$response['http_code']);
+  $result['body']=$xml_response;
+  return $result;
+
+}
+
+
+function readUrl($url){
+	$timeout = 10;
+  $ch = curl_init();
+  curl_setopt( $ch, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows; U; Windows NT 5.1; rv:1.7.3) Gecko/20041001 Firefox/0.10.1" );
+  curl_setopt( $ch, CURLOPT_URL, $url );
+  curl_setopt( $ch, CURLOPT_ENCODING, "" );
+  curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true );
+  curl_setopt( $ch, CURLOPT_AUTOREFERER, true );
+  curl_setopt( $ch, CURLOPT_CONNECTTIMEOUT, $timeout );
+  curl_setopt( $ch, CURLOPT_TIMEOUT, $timeout );
+  curl_setopt( $ch, CURLOPT_MAXREDIRS, 10 );
+  $content = curl_exec( $ch );
+  $response = curl_getinfo( $ch );
+  curl_close ( $ch );
+  if($response['http_code'] == 200)
+  {
+      return $content;
+  }
+  return false;
+}
+
+function realtime($callback,$payload,$prefix=false){
+
+  if (defined('PING') && !PING)
+    return;
+
+  if (defined('REALTIME_HOST') && !REALTIME_HOST )
+    return;
+
+  global $db;
+  
+  if ($prefix)
+    $chan = $prefix;
+  elseif (!empty($db->prefix))
+    $chan = $db->prefix;
+  else
+    $chan = "chan";
+  
+	if (!(class_exists('Services_JSON')))
+	  lib_include( 'json' );
+
+	$json = new Services_JSON();
+  
+  $payload['callback'] = $callback;
+
+	$load = $json->encode($payload);
+
+	$curl = curl_init( "http://".REALTIME_HOST.":".REALTIME_PORT );
+
+	curl_setopt( $curl, CURLOPT_RETURNTRANSFER, true );
+	curl_setopt( $curl, CURLOPT_TIMEOUT, 1);
+	curl_setopt( $curl, CURLOPT_CUSTOMREQUEST, 'ADDMESSAGE '.$chan.' '.addslashes($load) );
+
+	curl_exec($curl);
+
+}
+
+
+
+function echo_home_timeline_tweet($tweet,$user){
+	echo '  <status>
+		  <created_at>'.$tweet['created_at'].'</created_at>
+		  <id>'.$tweet['id'].'</id>
+		  <text>'.$tweet['text'].'</text>
+		  <source>'.$tweet['source'].'</source>
+		  <truncated>'.$tweet['truncated'].'</truncated>
+		  <in_reply_to_status_id>'.$tweet['in_reply_to_status_id'].'</in_reply_to_status_id>
+		  <in_reply_to_user_id>'.$tweet['in_reply_to_user_id'].'</in_reply_to_user_id>
+		  <favorited>'.$tweet['favorited'].'</favorited>
+		  <in_reply_to_screen_name>'.$tweet['in_reply_to_screen_name'].'</in_reply_to_screen_name>
+		  <user>
+		    <id>'.$user['id'].'</id>
+		    <name>'.$user['name'].'</name>
+		    <screen_name>'.$user['screen_name'].'</screen_name>
+		    <description>'.$user['description'].'</description>
+		    <profile_image_url>'.$user['profile_image_url'].'</profile_image_url>
+		    <url>'.$user['url'].'</url>
+		    <protected>'.$user['protected'].'</protected>
+		    <followers_count>'.$user['followers_count'].'</followers_count>
+		    <profile_background_color>'.$user['profile_background_color'].'</profile_background_color>
+		    <profile_text_color>'.$user['profile_text_color'].'</profile_text_color>
+		    <profile_link_color>'.$user['profile_link_color'].'</profile_link_color>
+		    <profile_sidebar_fill_color>'.$user['profile_sidebar_fill_color'].'</profile_sidebar_fill_color>
+		    <profile_sidebar_border_color>'.$user['profile_sidebar_border_color'].'</profile_sidebar_border_color>
+		    <friends_count>'.$user['friends_count'].'</friends_count>
+		    <created_at>'.$user['created_at'].'</created_at>
+		    <favourites_count>'.$user['favourites_count'].'</favourites_count>
+		    <utc_offset>'.$user['utc_offset'].'</utc_offset>
+		    <time_zone>'.$user['time_zone'].'</time_zone>
+		    <profile_background_image_url>'.$user['profile_background_image_url'].'</profile_background_image_url>
+		    <profile_background_tile>'.$user['profile_background_tile'].'</profile_background_tile>
+		    <notifications>'.$user['notifications'].'</notifications>
+		    <geo_enabled>'.$user['geo_enabled'].'</geo_enabled>
+		    <verified>'.$user['verified'].'</verified>
+		    <following>'.$user['following'].'</following>
+		    <statuses_count>'.$user['statuses_count'].'</statuses_count>
+		  </user>
+		</status>
+	';
+}
+
+function render_home_timeline($single=false,$id=null){
+	
+global $request,$db;
+
+$profile = get_profile();
+	$nick = $profile->nickname;
+	$Identity =& $db->model( 'Identity' );
+	$Identity->set_param('find_by',array(
+	  'nickname' => $nick,
+	  'eq'=>'IS',
+	  'post_notice' => 'NULL',
+	));
+
+	$Post =& $db->model( 'Post' );
+	//$Post->set_param( 'find_by', array(
+	//  'entries.person_id' => $profile->person_id
+	//));
+
+$Setting =& $db->model('Setting');
+
+if (!$single)
+	echo '<?xml version="1.0" encoding="UTF-8"?>
+<statuses type="array">
+';
+else
+		echo '<?xml version="1.0" encoding="UTF-8"?>
+	';
+
+
+$Post->set_limit(20);
+//$Post->set_order('desc');
+$Post->has_one('profile_id:'.$prefix.'identities');
+
+if (!$single) {
+
+	$Post->find();
+} else {
+	$Post->find($id);
+}
+	$tweets = array();
+	while ($p = $Post->MoveNext()) {
+		$profile = $p->FirstChild('identities');
+	  $tweet = array();
+	  $user = array();
+		$tit = iconv('UTF-8', 'ASCII//TRANSLIT', $p->title);
+	  $tweet['text'] = htmlentities($tit);
+	  $tweet['truncated'] = 'false';
+	  $tweet['created_at'] = date( "D M d G:i:s O Y", strtotime( $p->created ));
+	  $tweet['in_reply_to_status_id'] = '';
+	  $tweet['source'] = 'web';
+	  $tweet['id'] = intval( $p->id );
+	  $tweet['favorited'] ='false';
+	  $tweet['user'] = htmlentities($nick);
+
+	  $tweet['in_reply_to_user_id'] = '';
+	  $tweet['in_reply_to_screen_name'] = '';
+
+		$user['id'] = $profile->id;
+		$user['name'] = htmlentities($profile->fullname);
+		$user['screen_name'] = htmlentities($profile->nickname);
+		$user['location'] = htmlentities($profile->locality);
+		$user['description'] = htmlentities($profile->bio);
+		$user['profile_image_url'] = $profile->avatar;
+		$user['url'] = $profile->homepage;
+		$user['protected'] = 'false';
+		$user['followers_count'] = '0';
+		$user['profile_background_color'] = 'FFFFFF';
+		$user['profile_text_color'] = '000000';
+		$user['profile_link_color'] = '405991';
+		$user['profile_sidebar_fill_color'] = 'FFFFFF';
+		$user['profile_sidebar_border_color'] = 'FFFFFF';
+		$user['friends_count'] = '0';
+		$user['created_at'] = date( "D M d G:i:s O Y", strtotime( $profile->created ));
+		$user['favourites_count'] = '0';
+		$user['utc_offset'] = '-28800';
+		$user['time_zone'] = 'Pacific Time (US &amp; Canada)';
+
+
+	  $settingvalue = $Setting->find_by(array('name'=>'background_image','profile_id'=>$profile->id));
+
+
+		$user['profile_background_image_url'] = $settingvalue->value;
+
+	  $settingvalue = $Setting->find_by(array('name'=>'background_tile','profile_id'=>$profile->id));
+		$user['profile_background_tile'] = $settingvalue->value;
+		$user['notifications'] = 'false';
+		$user['geo_enabled'] = 'false';
+		$user['verified'] = 'false';
+		$user['following'] = 'true';
+		$user['statuses_count'] = '0';
+
+	  $tweets[] = array($tweet,$user);
+
+    echo_home_timeline_tweet($tweet,$user);
+
+	}
+
+
+
+if (!$single)
+  echo '</statuses>';
+
+	exit;
+	
+}

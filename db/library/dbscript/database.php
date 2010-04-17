@@ -5,7 +5,7 @@
    * @version 0.6.0 -- 22-October-2008
    * @author Brian Hendrickson <brian@dbscript.net>
    * @link http://dbscript.net/
-   * @copyright Copyright 2008 Brian Hendrickson
+   * @copyright Copyright 2009 Brian Hendrickson
    * @package dbscript
    * @license http://www.opensource.org/licenses/mit-license.php MIT License
    */
@@ -401,7 +401,7 @@ class Database {
    */
   function table_exists( $table ) {
     trigger_before( 'table_exists', $this, $this );
-    return isset( $this->models[$table] );
+    return $this->has_table($table);
   }
   
   function set_param( $param, $value ) {
@@ -572,26 +572,32 @@ class Database {
 
   function aws_delfile(&$rec, $pkvalue) {
     $ext = extension_for(type_of( $_FILES[strtolower(classify($rec->table))]['name'][$this->file_upload[0]] ));
-    $aws_file = $rec->table . $pkvalue . "." . $ext;
+    global $prefix;
+    $aws_file = $prefix.$rec->table . $pkvalue . "." . $ext;
     lib_include( 'S3' );
     $s3 = new S3( environment('awsAccessKey'), environment('awsSecretKey') );
     if (!$s3)
       trigger_error( 'Sorry, there was a problem connecting to Amazon Web Services', E_USER_ERROR );
-    if (!($s3->deleteObject(environment('awsBucket'), urlencode($aws_file))))
-      trigger_error( 'Sorry, there was a problem deleting the file from Amazon Web Services', E_USER_ERROR );
+    if ($s3->getBucket(environment('awsBucket'))
+    && $s3->getObject(environment('awsBucket'),urlencode($aws_file))) {
+      if (!($s3->deleteObject(environment('awsBucket'), urlencode($aws_file))))
+        trigger_error( 'Sorry, there was a problem deleting the file from Amazon Web Services', E_USER_ERROR );
+    }
   }
   
   
   function aws_putfile(&$rec, $pkvalue) {
-    global $request;
-    $file = $rec->table . $pkvalue . "." . extension_for(type_of( $_FILES[strtolower(classify($rec->table))]['name'][$this->file_upload[0]] ));
+    global $request,$prefix;
+    $file = $prefix.$rec->table . $pkvalue . "." . extension_for(type_of( $_FILES[strtolower(classify($rec->table))]['name'][$this->file_upload[0]] ));
     lib_include( 'S3' );
     $s3 = new S3( environment('awsAccessKey'), environment('awsSecretKey') );
     if (!$s3)
       trigger_error( 'Sorry, there was a problem connecting to Amazon Web Services', E_USER_ERROR );
-    $result = $s3->putBucket( environment('awsBucket'), 'public-read' );
-    if (!$result)
-      trigger_error( 'Sorry, there was a problem creating the bucket '.environment('awsBucket').' at Amazon Web Services', E_USER_ERROR );
+    if (!($s3->getBucket(environment('awsBucket')))) {
+      $result = $s3->putBucket( environment('awsBucket'), 'public-read' );
+      if (!$result)
+        trigger_error( 'Sorry, there was a problem creating the bucket '.environment('awsBucket').' at Amazon Web Services', E_USER_ERROR );
+    }
     if (file_exists($this->file_upload[1])) {
       if (!($s3->putObjectFile( $this->file_upload[1] , environment('awsBucket'), $file, 'public-read' )))
         trigger_error( 'Sorry, there was a problem uploading the file to Amazon Web Services', E_USER_ERROR );
