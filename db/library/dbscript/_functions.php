@@ -3482,3 +3482,11 @@ if (!$single)
 	exit;
 	
 }
+
+
+class AuthToken  {
+ 
+  var $token;
+  var $secret;
+
+}
