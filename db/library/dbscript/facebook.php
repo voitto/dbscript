@@ -56,61 +56,6 @@ EOD;
 	
 }
 
-
-$f = new Facebook( $key, $secret, $appid, $appname, $infinite_session );
-
-if ( !isset( $_GET['foo'] ) ) {
-	
-  $key = Services_Facebook::$apiKey;
-  $xd = 'xd_receiver.htm';
-  $redir = 'http://facebookstreams.com/lib/?foo=1';
-
-  echo <<<EOD
-		<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" 
-		 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-		<html xmlns="http://www.w3.org/1999/xhtml" xmlns:fb="http://www.facebook.com/2008/fbml">
-			<head>
-				<script type="text/javascript">
-				  function facebook_onlogin() {
-				    window.location='$redir';
-				  }
-				  function facebook_dologin() {
-						FB_RequireFeatures(["XFBML"], function(){ 
-							FB.Facebook.init('$key', '$xd', null);
-							FB.ensureInit(function () { 
-								FB.Connect.requireSession(facebook_onlogin, true);
-							});
-						});
-					}
-				</script>
-			</head>
-			<body>
-				<script src="http://static.ak.facebook.com/js/api_lib/v0.4/FeatureLoader.js.php" type="text/javascript"></script>
-	      <script type="text/javascript">
-			  // <![CDATA[
-	        facebook_dologin();
-	      // ]]>
-	      </script>      
-			</body>
-		</html>
-EOD;
-  
-} else {
-
-  $userid = $f->api->users->getLoggedInUser();
-  echo $userid; exit;
-	$f->update( 'tester!' );
-  
-}
-
-class AuthToken {
-  
-  var $token;
-  var $secret;
-
-}
-
-
 class FacebookToken extends AuthToken {
 
   var $api_root;
