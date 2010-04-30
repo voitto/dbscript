@@ -48,13 +48,10 @@
    
    Version 0.6.0, 22-October-2008
      apps, openappstore
-
-	 Version 0.7.0, 17-April-2010
-		 twitter, facebook, rss
    
    */
    
-$version = '0.7.0';
+$version = '0.6.0';
 
   /**
    * directory paths

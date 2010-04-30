@@ -2,12 +2,12 @@
 
 class FacebookHelper extends Helper {
 	
-	function header( $key, $xd, $login ) {
+	function header( $key, $xd, $next ) {
 		
 		echo <<<EOD
 			<script type="text/javascript">
 			  function facebook_onlogin() {
-			    window.location='$login';
+			    window.location='$next';
 			  }
 			  function facebook_dologin() {
 					FB_RequireFeatures(["XFBML"], function(){ 
@@ -22,7 +22,14 @@ EOD;
 
 	}
 
-	function login( ) {
+  function xmlns() {
+		echo <<<EOD
+ xmlns:fb="http://www.facebook.com/2008/fbml
+EOD;
+	
+  }
+
+	function login() {
     
     //$tag = $this->content_tag( 'a', 'Login with Facebook', array( 'href' => 'JavaScript:facebook_dologin();' )); 
 		echo <<<EOD
@@ -48,9 +55,9 @@ EOD;
   function doctype() {
 	
 	echo <<<EOD
-		<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" 
-		 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-		<html xmlns="http://www.w3.org/1999/xhtml" xmlns:fb="http://www.facebook.com/2008/fbml">
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" 
+ "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:fb="http://www.facebook.com/2008/fbml">
 EOD;
 	}
 	

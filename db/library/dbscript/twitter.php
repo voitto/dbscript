@@ -34,11 +34,12 @@ class Twitter {
   }
 
   function request_token() {
+	  $tk = new TwitterToken();
 	  $req = OAuthRequest::from_consumer_and_token(
 		  $this->consumer,
 		  $this->token,
 		  'GET',
-		  $this->request_token_url(),
+		  $tk->request_token_url(),
 		  array()
 		);
 	  $req->sign_request(
@@ -47,7 +48,6 @@ class Twitter {
 		  $this->token
 		);
 	  $response = $this->http($req->to_url());
-	  $tk = new AuthToken();
     foreach (explode('&', $response) as $param) {
       $pair = explode('=', $param, 2);
       if (count($pair) != 2) continue;
@@ -63,11 +63,12 @@ class Twitter {
 
   function authorize_from_request( $token, $secret ){
     $this->token = new OAuthConsumer( $token, $secret );
+	  $tk = new TwitterToken();
     $req = OAuthRequest::from_consumer_and_token(
 	    $this->consumer,
 	    $this->token,
 	    'GET',
-	    $this->access_token_url(),
+	    $tk->access_token_url(),
 	    array()
 	  );
     $req->sign_request(
@@ -76,10 +77,8 @@ class Twitter {
 	    $this->token
 	  );
 	  $response = $this->http($req->to_url());
-	  $tk = new AuthToken();
     foreach (explode('&', $response) as $param) {
       $pair = explode('=', $param, 2);
-      if (count($pair) != 2) continue;
       $var = urldecode($pair[0]);
       if ($var == 'oauth_token')
         $var = 'atoken';
@@ -95,11 +94,12 @@ class Twitter {
   }
 
   function update( $status ) {
+	  $tk = new TwitterToken();
 	  $req = OAuthRequest::from_consumer_and_token(
 		  $this->consumer,
 		  $this->token,
 		  'POST',
-		  $this->api_root.'/statuses/update.xml',
+		  $tk->api_root.'/statuses/update.xml',
 		  array( 'status' => $status )
 		);
 	  $req->sign_request(
